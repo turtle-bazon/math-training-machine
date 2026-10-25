@@ -12,5 +12,6 @@
 (:bind-address "127.0.0.1"   ;; 0.0.0.0 to listen on the LAN
  :bind-port 8123
  :data-dir "data/"           ;; conskivi database directory
- :public-dir "public/")      ;; static assets; missing files fall back to
+ :public-dir "public/"       ;; static assets; missing files fall back to
                              ;; the copy embedded in the binary
+ :stats-path "/stats")       ;; secret stats page path (MTM_STATS_PATH)

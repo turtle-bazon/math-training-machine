@@ -4,7 +4,8 @@
             [mtm.db :as db]
             [mtm.game :as game]
             [mtm.sound :as sound]
-            [mtm.views :as views]))
+            [mtm.views :as views]
+            [mtm.api :as api]))
 
 (defonce ^:private root-el (atom nil))
 (defonce ^:private client (atom nil))
@@ -77,7 +78,20 @@
 (defn init []
   (db/load-settings!)
   (game/init-duration!)
+  (let [loc js/location
+        search (.-search loc)
+        hash (.-hash loc)
+        path (.-pathname loc)]
+    (when (or (= path "/stats")
+              (re-find #"stats" (str search hash)))
+      (swap! db/state assoc :screen :stats)))
   (mount!)
+  (api/visit {:device (db/device-id)
+              :source (or (some-> js/window .-MTM_SOURCE str) "web")
+              :browser (.-userAgent js/navigator)
+              :referrer (when (seq (.-referrer js/document)) (.-referrer js/document))}
+            (fn [_]))
+  (api/stats (fn [res] (when (:ok res) (reset! db/stats (:data res)))))
   (.addEventListener js/window "keydown" on-key-down true)
   (.addEventListener js/window "click" global-click true)
   (.addEventListener js/window "pointerdown" global-click true)

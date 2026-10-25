@@ -24,6 +24,10 @@
   "Leaderboard payload fetched from the backend."
   (r/atom {:status :idle :mode nil :entries []}))
 
+(def stats
+  "Visitor/game statistics fetched from the backend."
+  (r/atom nil))
+
 ;;; --- localStorage -------------------------------------------------------
 
 (defonce ^:private storage

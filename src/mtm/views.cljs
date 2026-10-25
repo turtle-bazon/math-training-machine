@@ -62,6 +62,8 @@
         :server-unavailable "sunucuya ulaşılamıyor"
         :lang "DİL"}})
 
+(declare fetch-board!)
+
 (defn t
   [lang k]
   (or (get-in translations [lang k])
@@ -205,6 +207,11 @@
       (if best
         [:span (str (t lang :personal-best) "  ") [:b (str best)] " pts"]
         [:span.dim (t lang :no-record)])]
+     (when-let [st @db/stats]
+       [:div.best-line.dim
+        (str (if (= lang :tr) "Ziyaretçi" "Visitors") ": " (:visits st)
+             " · " (if (= lang :tr) "Tekil" "Unique") ": " (:unique st)
+             " · " (if (= lang :tr) "Oyun" "Games") ": " (:games st))])
      [:div.big-buttons
       [:button.primary.big
        {:on-click #(game/start-round! (:mode settings))}
@@ -336,13 +343,18 @@
 
            :else
            [:div.save-row
+            (when-not (:saved-best res)
+              [:span.dim (if (= lang :tr) "rekor beaten değil" "not a new best")])
             [:input.name-input
              {:value @name*
               :placeholder (t lang :name-placeholder)
               :maxLength 16
+              :disabled (not (:saved-best res))
               :on-change #(reset! name* (.. % -target -value))
               :on-key-down #(when (= (.-key %) "Enter") (save!))}]
-            [:button.primary {:on-click save!} (t lang :save-score)]])
+            [:button.primary {:on-click save!
+                             :disabled (not (:saved-best res))}
+             (t lang :save-score)]])
          [:div.big-buttons
           [:button.primary.big
            {:on-click #(game/start-round! (:mode res))} (t lang :play-again)]
@@ -359,6 +371,7 @@
            (if (= lang :tr) "PAYLAŞ" "SHARE")]
           [:button.ghost
            {:on-click #(do (sound/play! :leaderboard)
+                           (fetch-board! (:mode res))
                            (swap! db/state assoc :screen :leaderboard))}
            (t lang :leaderboard)]
           [:button.ghost
@@ -447,6 +460,24 @@
          (.-matches (js/window.matchMedia "(pointer: coarse)")))
     (catch :default _ false)))
 
+(defn stats-page []
+  (let [data (r/atom nil)]
+    (fn []
+      (when-not @data
+        (api/stats (fn [res] (when (:ok res) (reset! data (:data res))))))
+      [:div.screen.stats
+       [:div.lb-title "STATS"]
+       (if @data
+         [:div.stats-grid
+          (for [[k v] @data]
+            ^{:key (name k)}
+            [:div.stat
+             [:span.stat-label (str (name k))]
+             [:span.stat-value (str v)]])]
+         [:div.dim "loading..."])
+       [:div.big-buttons
+        [:button.ghost {:on-click #(swap! db/state assoc :screen :menu)} "MENU"]]])))
+
 (defn root []
   (let [screen (:screen @db/state)
         lang (or (:lang @db/settings) :en)
@@ -470,5 +501,6 @@
         :play        [play]
         :results     [results]
         :leaderboard [leaderboard]
+        :stats       [stats-page]
         [menu])]
      (into [:footer.controls] hints)]))

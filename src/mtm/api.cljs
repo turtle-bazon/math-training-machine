@@ -41,3 +41,24 @@
 (defn trim-name [s]
   (let [t (str/trim (or s ""))]
     (subs t 0 (min 128 (count t)))))
+
+(defn visit [payload cb]
+  (-> (.fetch js/window (str base "/api/visit")
+              #js{:method "POST"
+                  :headers #js{"content-type" "application/json"}
+                  :body (js/JSON.stringify (clj->js payload))})
+      (.then (fn [res] (cb (.-ok res))))
+      (.catch (fn [_] (cb false)))))
+
+(defn game-played [cb]
+  (-> (.fetch js/window (str base "/api/game") #js{:method "POST"})
+      (.then (fn [res] (cb (.-ok res))))
+      (.catch (fn [_] (cb false)))))
+
+(defn stats [cb]
+  (-> (.fetch js/window (str base "/api/stats"))
+      (.then (fn [res]
+               (if (.-ok res)
+                 (-> (.json res) (.then (fn [d] (cb {:ok true :data (js->clj d :keywordize-keys true)}))))
+                 (throw (js/Error. "HTTP")))))
+      (.catch (fn [_] (cb {:ok false})))))

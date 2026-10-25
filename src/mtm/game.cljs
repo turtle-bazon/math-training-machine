@@ -6,6 +6,7 @@
   bonus, and letting it run out marks the question as missed."
   (:require [mtm.db :as db]
             [mtm.sound :as sound]
+            [mtm.api :as api]
             [clojure.string :as str]))
 
 (def round-ms 60000)
@@ -355,6 +356,8 @@
       (sound/play! :gameover)
       (reset! db/results results)
       (reset! db/game nil)
+      (api/game-played (fn [_]
+                         (api/stats (fn [res] (when (:ok res) (reset! db/stats (:data res)))))))
       (swap! db/state assoc :screen :results))))
 
 (defn- tick! []

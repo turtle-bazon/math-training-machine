@@ -143,6 +143,51 @@
            ((not (uiop:subpathp target public)) (forbidden))
            (t (json-error 404 "not found"))))))))
 
+
+(defun handle-stats-page ()
+  "Server-rendered, non-mobile-friendly statistics page with charts."
+  (list 200
+        '(:content-type "text/html; charset=utf-8"
+          :cache-control "no-store")
+        (list (concatenate 'string
+                "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
+                "<title>Stats</title><style>"
+                "body{font-family:monospace;background:#070912;color:#e8ecff;padding:24px;}"
+                "h1{color:#ffcf4d;}h2{color:#46e6ff;margin-top:24px;}"
+                "table{border-collapse:collapse;margin-top:8px;}td,th{border:1px solid #2b3568;padding:6px 12px;}"
+                "th{background:#1c2450;} .chart{display:flex;align-items:flex-end;gap:4px;height:120px;margin-top:12px;}"
+                ".bar{background:#ffcf4d;width:20px;position:relative;} .bar span{position:absolute;bottom:-18px;left:0;font-size:10px;writing-mode:vertical-rl;transform:rotate(180deg);}"
+                ".bar .v{position:absolute;top:-16px;left:0;font-size:10px;color:#46e6ff;}"
+                "</style></head><body><h1>STATISTICS</h1>"
+                "<div id='totals'></div>"
+                "<h2>Daily visits</h2><div class='chart' id='dv'></div>"
+                "<h2>Daily games</h2><div class='chart' id='dg'></div>"
+                "<h2>Daily unique users</h2><div class='chart' id='du'></div>"
+                "<h2>Sources</h2><div id='sources'></div>"
+                "<h2>Browsers</h2><div id='browsers'></div>"
+                "<h2>Referrers</h2><div id='referrers'></div>"
+                "<script>"
+                "function barChart(el,data){const max=Math.max(...data.map(d=>d[1]),1);"
+                "data.forEach(d=>{const b=document.createElement('div');b.className='bar';"
+                "b.style.height=(d[1]/max*100)+'px';"
+                "b.innerHTML='<span class=v>'+d[1]+'</span><span>'+d[0].slice(5)+'</span>';"
+                "el.appendChild(b);});}"
+                "function table(el,data){const t=document.createElement('table');"
+                "t.innerHTML='<tr><th>name</th><th>count</th></tr>';"
+                "data.forEach(d=>{const tr=document.createElement('tr');tr.innerHTML='<td>'+d[0]+'</td><td>'+d[1]+'</td>';t.appendChild(tr);});"
+                "el.appendChild(t);}"
+                "fetch('/api/stats').then(r=>r.json()).then(d=>{"
+                "const tot=document.getElementById('totals');"
+                "tot.innerHTML='<p>visits: '+d.visits+' | unique: '+d.unique+' | games: '+d.games+' | scores: '+d.scores+'</p>';"
+                "barChart(document.getElementById('dv'),d['daily-visits']||[]);"
+                "barChart(document.getElementById('dg'),d['daily-games']||[]);"
+                "barChart(document.getElementById('du'),d['daily-unique']||[]);"
+                "table(document.getElementById('sources'),d.sources||[]);"
+                "table(document.getElementById('browsers'),d.browsers||[]);"
+                "table(document.getElementById('referrers'),d.referrers||[]);"
+                "});"
+                "</script></body></html>"))))
+
 ;;; --- app ---------------------------------------------------------------
 
 (defun app (env)
@@ -158,6 +203,25 @@
            (if (string= method "POST")
                (handle-leaderboard-post env)
                (handle-leaderboard-get env)))
+          ((string= path "/api/stats")
+           (if (string= method "GET")
+               (json-response 200 (apply #'jobj (get-stats)))
+               (json-error 405 "method not allowed")))
+          ((string= path "/api/visit")
+           (if (string= method "POST")
+               (let ((body (body-as-json env)))
+                 (inc-visits (when (hash-table-p body) (jstr body "device"))
+                             (when (hash-table-p body) (jstr body "source"))
+                             (when (hash-table-p body) (jstr body "browser"))
+                             (when (hash-table-p body) (jstr body "referrer")))
+                 (json-response 200 (jobj :ok t)))
+               (json-error 405 "method not allowed")))
+          ((string= path "/api/game")
+           (if (string= method "POST")
+               (progn (inc-games-daily) (inc-stat :stat-games) (json-response 200 (jobj :ok t)))
+               (json-error 405 "method not allowed")))
+          ((and (configured-stats-path) (string= path (configured-stats-path)))
+           (handle-stats-page))
           ((and (> (length path) 4) (string= (subseq path 0 4) "/api/"))
            (json-error 404 "unknown api endpoint"))
           ((string= method "GET") (handle-static path))

@@ -52,7 +52,8 @@
     (str :bind-address)
     (port :bind-port)
     (str :data-dir)
-    (str :public-dir))
+    (str :public-dir)
+    (str :stats-path))
   t)
 
 (defun read-config (file)
@@ -91,6 +92,14 @@
 
 (defun configured-address ()
   (setting "MTM_ADDRESS" :bind-address *address*))
+
+(defun configured-stats-path ()
+  "Secret stats page path, or NIL when disabled (MTM_STATS_PATH / :stats-path)."
+  (let ((raw (setting "MTM_STATS_PATH" :stats-path "/stats")))
+    (when (and (stringp raw) (plusp (length raw)))
+      (if (char= (char raw 0) #\/)
+          raw
+          (concatenate 'string "/" raw)))))
 
 (defun describe-config ()
   "Banner block: which file was read and what it all comes out to."

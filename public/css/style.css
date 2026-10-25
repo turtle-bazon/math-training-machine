@@ -435,6 +435,14 @@ button {
   margin: 22px auto 0;
   max-width: 720px;
 }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin: 22px auto 0;
+  max-width: 720px;
+}
 .stat {
   background: var(--panel);
   border: 2px solid var(--line);
