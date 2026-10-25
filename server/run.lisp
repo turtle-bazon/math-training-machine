@@ -39,8 +39,7 @@
 (asdf:load-asd (merge-pathnames "mtm-server.asd" *root*))
 
 (ql:quickload '("clack" "clack-handler-wookie" "yason" "conskivi-fileonly"
-                "bordeaux-threads" "quri" "babel" "cl-base64")
-              :silent t)
+                "bordeaux-threads" "quri" "babel" "cl-base64"))
 
 (asdf:load-system "mtm-server")
 
