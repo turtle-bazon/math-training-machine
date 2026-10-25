@@ -279,15 +279,20 @@ Caller must hold *DB-LOCK*."
     out))
 
 
+
+(defparameter *all-game-types*
+  (let ((ops '("sum" "diff" "mult" "mixed"))
+        (cls '("positive" "signed" "frac" "frac-signed")))
+    (loop for op in ops
+          append (loop for cl in cls
+                       collect (format nil "~a-~a" op cl)))))
+
 (defun collect-game-types ()
-  (let* ((key :game-types)
-           (n (conskivi-core:conskivi-zcard *db* key))
-           (out '()))
-      (when (plusp n)
-        (let ((flat (conskivi-core:conskivi-zrevrange *db* key 0 (1- n) t)))
-          (loop for (member score) on flat by #'cddr
-                do (push (list member (round score)) out))))
-      (sort out #'> :key #'second)))
+  (let ((out '()))
+    (dolist (m *all-game-types*)
+      (let ((score (conskivi-core:conskivi-zscore *db* :game-types m)))
+        (push (list m (if score (round score) 0)) out)))
+    (sort out #'> :key #'second)))
 
 
 (defun collect-game-type-daily (mode days)
@@ -305,9 +310,8 @@ Caller must hold *DB-LOCK*."
     out))
 
 (defun collect-game-type-series ()
-  (let ((modes (mapcar #'first (collect-game-types)))
-        (out '()))
-    (dolist (m modes)
+  (let ((out '()))
+    (dolist (m *all-game-types*)
       (push (jobj :mode m
                   :daily (collect-game-type-daily m 30)) out))
     (nreverse out)))
