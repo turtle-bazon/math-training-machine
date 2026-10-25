@@ -1,0 +1,10 @@
+syntax: glob
+public/js/**
+node_modules/**
+data/**
+build/**
+server/static-assets.lisp
+.nrepl-port
+.shadow-cljs/**
+*.log
+.lisp~

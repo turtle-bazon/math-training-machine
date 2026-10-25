@@ -1,0 +1,19 @@
+{
+  "name": "math-training-machine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Math training machine arcade game (ClojureScript + Reagent)",
+  "scripts": {
+    "dev": "shadow-cljs watch app",
+    "build": "shadow-cljs release app",
+    "server": "sbcl --non-interactive --load server/run.lisp"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.1",
+    "shadow-cljs": "^2.28.23"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
