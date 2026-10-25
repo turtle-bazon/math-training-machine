@@ -278,8 +278,22 @@
    (doall
     (map-indexed (fn [i _] ^{:key i} [:span.bulb]) (range 14)))])
 
+(defn- coarse-pointer?
+  "True on touch devices - where the keyboard hints make no sense."
+  []
+  (try
+    (and (exists? js/window.matchMedia)
+         (.-matches (js/window.matchMedia "(pointer: coarse)")))
+    (catch :default _ false)))
+
 (defn root []
-  (let [screen (:screen @db/state)]
+  (let [screen (:screen @db/state)
+        hints  (if (coarse-pointer?)
+                 [[:span "tap an answer"]
+                  [:span "tap to start"]]
+                 [[:span "[1-4] answer"]
+                  [:span "[ENTER] start"]
+                  [:span "[ESC] back"]])]
     [:div.cabinet
      [:header.marquee [bulbs] [:h1 "MATH TRAINING MACHINE"]]
      [:main.screen-wrap
@@ -288,7 +302,4 @@
         :results     [results]
         :leaderboard [leaderboard]
         [menu])]
-     [:footer.controls
-      [:span "[1-4] answer"]
-      [:span "[ENTER] start"]
-      [:span "[ESC] back"]]]))
+     (into [:footer.controls] hints)]))

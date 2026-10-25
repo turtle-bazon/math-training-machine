@@ -16,15 +16,40 @@
   "Directory the server was started from (run everything from there)."
   (uiop:getcwd))
 
+(defparameter *config* nil
+  "Plist read from the configuration file, or NIL when there is none.
+  Filled in by load-config! before the server starts.")
+
+(defparameter *config-file* nil
+  "Path of the configuration file in use, or NIL.")
+
+(defun setting (env-name key default)
+  "Effective value of a setting: environment variable, then config file,
+  then DEFAULT."
+  (or (uiop:getenvp env-name)
+      (and *config* (getf *config* key))
+      default))
+
+(defun resolve-dir (raw)
+  "Turn a configured path into an absolute directory. Relative values in
+  mtm.conf (\"data/\") mean \"next to where the server was started\" -
+  absolute paths are what the store and the static handler expect."
+  (uiop:ensure-absolute-pathname
+   (uiop:ensure-directory-pathname raw)
+   (project-root)))
+
 (defun data-dir ()
-  (uiop:ensure-directory-pathname
-   (or (uiop:getenvp "MTM_DATA")
-       (merge-pathnames "data/" (project-root)))))
+  "Where the conskivi database lives (MTM_DATA / :data-dir)."
+  (resolve-dir (setting "MTM_DATA" :data-dir "data/")))
 
 (defun public-dir ()
-  (uiop:ensure-directory-pathname
-   (or (uiop:getenvp "MTM_PUBLIC")
-       (merge-pathnames "public/" (project-root)))))
+  "Static assets on disk (MTM_PUBLIC / :public-dir). Absent or partial is
+  fine: whatever is missing comes from the copy embedded in the image."
+  (resolve-dir (setting "MTM_PUBLIC" :public-dir "public/")))
+
+(defun parse-int (value &optional default)
+  (handler-case (parse-integer value :junk-allowed t)
+    (error () default)))
 
 ;;; JSON helpers ---------------------------------------------------------
 

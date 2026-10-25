@@ -112,6 +112,9 @@ button {
   cursor: pointer;
   border: none;
   background: none;
+  /* no double-tap zoom / no 300ms tap delay on touch screens */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .primary {
@@ -500,4 +503,14 @@ button {
   .stats { grid-template-columns: repeat(2, 1fr); }
   .lb-row { grid-template-columns: 40px 1fr 54px 84px; padding: 9px 10px; }
   .controls { gap: 12px; font-size: 10px; }
+}
+
+/* touch screens: every control at least 44px in the direction you press it */
+@media (pointer: coarse) {
+  .icon-btn { padding: 15px 18px; }
+  .tab { padding: 15px 18px; }
+  .ghost { padding: 16px 20px; }
+  .mode { padding: 18px 8px; }
+  .option { padding: 26px 10px; }
+  .name-input { padding: 15px 14px; }
 }

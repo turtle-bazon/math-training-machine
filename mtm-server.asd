@@ -17,6 +17,7 @@
   :serial t
   :components ((:module "server"
                 :components ((:file "package")
+                             (:file "config")
                              (:file "static")
                              (:file "store")
                              (:file "app")

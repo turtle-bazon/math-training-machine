@@ -12,10 +12,6 @@
             default)
         default)))
 
-(defun parse-int (value &optional default)
-  (handler-case (parse-integer value :junk-allowed t)
-    (error () default)))
-
 (defun request-body-string (env)
   (let ((stream (getf env :raw-body)))
     (when stream

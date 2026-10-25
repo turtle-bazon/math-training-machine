@@ -4,6 +4,7 @@ node_modules/**
 data/**
 build/**
 server/static-assets.lisp
+mtm.conf
 .nrepl-port
 .shadow-cljs/**
 *.log

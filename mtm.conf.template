@@ -1,0 +1,16 @@
+;; Math Training Machine server configuration.
+;;
+;; Copy this file to mtm.conf next to where the server starts (or to
+;; ~/.mtm.conf, ~/.config/mtm/mtm.conf, /etc/mtm.conf) and edit the values.
+;; It is a plain Lisp plist - comments start with a semicolon.
+;;
+;; Environment variables override the file: MTM_ADDRESS, MTM_PORT,
+;; MTM_DATA, MTM_PUBLIC, and MTM_CONFIG names the file itself.
+;;
+;; All keys are optional; these are the defaults.
+
+(:bind-address "127.0.0.1"   ;; 0.0.0.0 to listen on the LAN
+ :bind-port 8123
+ :data-dir "data/"           ;; conskivi database directory
+ :public-dir "public/")      ;; static assets; missing files fall back to
+                             ;; the copy embedded in the binary

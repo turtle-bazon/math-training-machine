@@ -1,6 +1,6 @@
 all: build
 
-.PHONY: all build clean frontend generate-static run dev-start dev-stop tests e2e
+.PHONY: all build clean frontend generate-static run dev-start dev-stop tests e2e mobile
 
 SBCL   = sbcl --noinform --non-interactive
 SHADOW = npx shadow-cljs
@@ -41,3 +41,7 @@ tests:
 # browser end-to-end test, needs `make tests`-style server already running
 e2e:
 	node test/e2e.mjs
+
+# phone-sized touch probe (390x844) against a running server
+mobile:
+	node test/mobile.mjs
