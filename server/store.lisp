@@ -283,8 +283,8 @@ Caller must hold *DB-LOCK*."
 (defparameter *all-game-types*
   (let ((ops '("sum" "diff" "mult" "mixed"))
         (cls '("positive" "signed" "frac" "frac-signed")))
-    (loop for op in ops
-          append (loop for cl in cls
+    (loop for cl in cls
+          append (loop for op in ops
                        collect (format nil "~a-~a" op cl)))))
 
 (defun collect-game-types ()
