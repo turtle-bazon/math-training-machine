@@ -35,7 +35,7 @@
                  (setf start (1+ i)))
       (when (> len start)
         (push (string-downcase (subseq mode start len)) out))
-      (nreverse out))))
+      out)))
 
 (defun operation-token-p (tok)
   (member tok *operation-tokens* :test #'string=))
@@ -164,7 +164,7 @@ Caller must hold *DB-LOCK*."
               for rec = (conskivi-core:conskivi-get *db* (rec-key member))
               when (and rec (string= (getf rec :name) name))
                 do (push member out))))
-    (nreverse out)))
+    out))
 
 (defun best-same-name (mode name)
   "The (id . record) of the highest-scoring record in MODE for NAME, or NIL."
@@ -237,7 +237,7 @@ Caller must hold *DB-LOCK*."
              (key (daily-key prefix date))
              (val (conskivi-core:conskivi-get *db* key)))
         (push (list date (or val 0)) out)))
-    (nreverse out)))
+    out))
 
 (defun collect-prefixed (prefix)
   (let ((out '()))
@@ -259,7 +259,7 @@ Caller must hold *DB-LOCK*."
              (key (daily-key "DAILY-VISITORS" date))
              (val (conskivi-core:conskivi-zcard *db* key)))
         (push (list date (or val 0)) out)))
-    (nreverse out)))
+    out))
 
 (defun get-stats ()
   (bt:with-lock-held (*db-lock*)
