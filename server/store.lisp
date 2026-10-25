@@ -219,11 +219,28 @@ Caller must hold *DB-LOCK*."
       (conskivi-fileonly:conskivi-save *db*)
       (1+ cur))))
 
-(defun inc-games-daily ()
+(defun game-mode-prefix (mode)
+  (format nil "DAILY-GAME-~a" mode))
+
+(defun inc-game (mode)
   (bt:with-lock-held (*db-lock*)
     (let ((day (today-string)))
+      ;; total daily games
       (conskivi-core:conskivi-put *db* (daily-key "DAILY-GAMES" day)
         (1+ (or (conskivi-core:conskivi-get *db* (daily-key "DAILY-GAMES" day)) 0)))
+      ;; per-mode daily games
+      (when (and (stringp mode) (plusp (length mode)))
+        (let ((k (daily-key (game-mode-prefix mode) day)))
+          (conskivi-core:conskivi-put *db* k
+            (1+ (or (conskivi-core:conskivi-get *db* k) 0)))))
+      ;; total games
+      (conskivi-core:conskivi-put *db* :stat-games
+        (1+ (or (conskivi-core:conskivi-get *db* :stat-games) 0)))
+      ;; per-mode totals
+      (when (and (stringp mode) (plusp (length mode)))
+        (let* ((key :game-types)
+               (cur (conskivi-core:conskivi-zscore *db* key mode)))
+          (conskivi-core:conskivi-zadd *db* key (1+ (or cur 0)) mode)))
       (conskivi-fileonly:conskivi-save *db*))))
 
 (defun collect-daily (prefix days)
@@ -261,12 +278,48 @@ Caller must hold *DB-LOCK*."
         (push (list date (or val 0)) out)))
     out))
 
+
+(defun collect-game-types ()
+  (let* ((key :game-types)
+           (n (conskivi-core:conskivi-zcard *db* key))
+           (out '()))
+      (when (plusp n)
+        (let ((flat (conskivi-core:conskivi-zrevrange *db* key 0 (1- n) t)))
+          (loop for (member score) on flat by #'cddr
+                do (push (list member (round score)) out))))
+      (sort out #'> :key #'second)))
+
+
+(defun collect-game-type-daily (mode days)
+  (let ((out '())
+        (prefix (game-mode-prefix mode)))
+    (dotimes (i days)
+      (let* ((universal (get-universal-time))
+             (target (- universal (* i 86400)))
+             (decoded (multiple-value-list (decode-universal-time target)))
+             (date (format nil "~4,'0d-~2,'0d-~2,'0d"
+                           (sixth decoded) (fifth decoded) (fourth decoded)))
+             (key (daily-key prefix date))
+             (val (conskivi-core:conskivi-get *db* key)))
+        (push (list date (or val 0)) out)))
+    out))
+
+(defun collect-game-type-series ()
+  (let ((modes (mapcar #'first (collect-game-types)))
+        (out '()))
+    (dolist (m modes)
+      (push (jobj :mode m
+                  :daily (collect-game-type-daily m 30)) out))
+    (nreverse out)))
+
 (defun get-stats ()
   (bt:with-lock-held (*db-lock*)
     (list :visits (or (conskivi-core:conskivi-get *db* :stat-visits) 0)
           :unique (conskivi-core:conskivi-zcard *db* :visitors)
           :games (or (conskivi-core:conskivi-get *db* :stat-games) 0)
           :scores (or (conskivi-core:conskivi-get *db* :stat-scores) 0)
+          :game-types (collect-game-types)
+          :game-type-daily (collect-game-type-series)
           :daily-visits (collect-daily "DAILY-VISITS" 30)
           :daily-games (collect-daily "DAILY-GAMES" 30)
           :daily-unique (collect-daily-unique 30)

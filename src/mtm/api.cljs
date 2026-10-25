@@ -50,8 +50,11 @@
       (.then (fn [res] (cb (.-ok res))))
       (.catch (fn [_] (cb false)))))
 
-(defn game-played [cb]
-  (-> (.fetch js/window (str base "/api/game") #js{:method "POST"})
+(defn game-played [mode cb]
+  (-> (.fetch js/window (str base "/api/game")
+              #js{:method "POST"
+                  :headers #js{"content-type" "application/json"}
+                  :body (js/JSON.stringify #js{:mode (if (keyword? mode) (name mode) (str mode))})})
       (.then (fn [res] (cb (.-ok res))))
       (.catch (fn [_] (cb false)))))
 

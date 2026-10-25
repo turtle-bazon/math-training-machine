@@ -156,22 +156,24 @@
                 "h1{color:#ffcf4d;}h2{color:#46e6ff;margin-top:24px;}"
                 "table{border-collapse:collapse;margin-top:8px;width:100%;}td,th{border:1px solid #2b3568;padding:6px 12px;}"
                 "th{background:#1c2450;}"
-                ".chart{display:flex;align-items:flex-end;gap:2px;height:160px;margin-top:12px;margin-bottom:32px;width:100%;}"
+                ".chart{display:flex;align-items:flex-end;gap:1px;height:160px;margin-top:12px;margin-bottom:32px;width:100%;padding-bottom:28px;box-sizing:border-box;}"
                 ".bar{background:#ffcf4d;flex:1;min-width:2px;position:relative;}"
                 ".bar span{position:absolute;bottom:-28px;left:50%;transform:translateX(-50%) rotate(-45deg);font-size:9px;white-space:nowrap;}"
                 ".bar .v{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:#46e6ff;white-space:nowrap;}"
                 "</style></head><body><h1>STATISTICS</h1>"
                 "<div id='totals'></div>"
                 "<h2>Daily visits</h2><div class='chart' id='dv'></div>"
-                "<h2>Daily games</h2><div class='chart' id='dg'></div>"
                 "<h2>Daily unique users</h2><div class='chart' id='du'></div>"
+                "<h2>Daily games (all)</h2><div class='chart' id='dg'></div>"
+                "<h2>Game types (daily)</h2><div id='gametypecharts'></div>"
+                "<h2>Game types (totals)</h2><div id='gametypes'></div>"
                 "<h2>Sources</h2><div id='sources'></div>"
                 "<h2>Browsers</h2><div id='browsers'></div>"
                 "<h2>Referrers</h2><div id='referrers'></div>"
                 "<script>"
                 "function barChart(el,data){const max=Math.max(...data.map(d=>d[1]),1);"
                 "data.forEach(d=>{const b=document.createElement('div');b.className='bar';"
-                "b.style.height=(d[1]/max*100)+'px';"
+                "b.style.height=(d[1]===0?2:(d[1]/max*100))+'px';"
                 "b.innerHTML='<span class=v>'+d[1]+'</span><span>'+d[0].slice(5)+'</span>';"
                 "el.appendChild(b);});}"
                 "function table(el,data){const t=document.createElement('table');"
@@ -180,13 +182,20 @@
                 "el.appendChild(t);}"
                 "fetch('/api/stats').then(r=>r.json()).then(d=>{"
                 "const tot=document.getElementById('totals');"
-                "tot.innerHTML='<p>visits: '+d.visits+' | unique: '+d.unique+' | games: '+d.games+' | scores: '+d.scores+'</p>';"
+                "tot.innerHTML='<p>visits: '+d.visits+' | unique: '+d.unique+' | games: '+d.games+'</p>';"
                 "barChart(document.getElementById('dv'),d['daily-visits']||[]);"
                 "barChart(document.getElementById('dg'),d['daily-games']||[]);"
                 "barChart(document.getElementById('du'),d['daily-unique']||[]);"
                 "table(document.getElementById('sources'),d.sources||[]);"
                 "table(document.getElementById('browsers'),d.browsers||[]);"
-                "table(document.getElementById('referrers'),d.referrers||[]);"
+                "table(document.getElementById('referrers'),d.referrers||[]);
+                table(document.getElementById('gametypes'),d['game-types']||[]);
+const gtc=document.getElementById('gametypecharts');
+(d['game-type-daily']||[]).forEach(g=>{
+  const h=document.createElement('h3');h.textContent=g.mode;h.style.color='#39e07f';gtc.appendChild(h);
+  const c=document.createElement('div');c.className='chart';gtc.appendChild(c);
+  barChart(c,g.daily||[]);
+});"
                 "});"
                 "</script></body></html>"))))
 
@@ -220,7 +229,9 @@
                (json-error 405 "method not allowed")))
           ((string= path "/api/game")
            (if (string= method "POST")
-               (progn (inc-games-daily) (inc-stat :stat-games) (json-response 200 (jobj :ok t)))
+               (let ((body (body-as-json env)))
+                 (inc-game (when (hash-table-p body) (jstr body "mode")))
+                 (json-response 200 (jobj :ok t)))
                (json-error 405 "method not allowed")))
           ((and (configured-stats-path) (string= path (configured-stats-path)))
            (handle-stats-page))

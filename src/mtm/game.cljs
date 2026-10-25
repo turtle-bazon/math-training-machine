@@ -356,8 +356,8 @@
       (sound/play! :gameover)
       (reset! db/results results)
       (reset! db/game nil)
-      (api/game-played (fn [_]
-                         (api/stats (fn [res] (when (:ok res) (reset! db/stats (:data res)))))))
+      (api/game-played (:mode g) (fn [_]
+                                   (api/stats (fn [res] (when (:ok res) (reset! db/stats (:data res)))))))
       (swap! db/state assoc :screen :results))))
 
 (defn- tick! []
