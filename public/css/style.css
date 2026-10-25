@@ -208,9 +208,9 @@ button {
 
 .class-picker {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  max-width: 240px;
+  max-width: 480px;
   margin: 0 auto 8px;
 }
 .mode, .class {

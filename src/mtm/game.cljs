@@ -45,6 +45,40 @@
     (let [v (rnd (- bound) bound)]
       (if (zero? v) (rnd 1 bound) v))))
 
+(defn- gcd [a b]
+  (if (zero? b) (Math/abs a) (gcd b (mod (Math/abs a) (Math/abs b)))))
+
+(defn- reduce-frac [{:keys [n d]}]
+  (let [g (gcd n d)
+        d (if (neg? d) (- d) d)
+        n (if (neg? d) (- n) n)]
+    {:n (/ n g) :d (/ d g)}))
+
+(defn- make-fraction [bound positive?]
+  (reduce-frac
+   {:n (if positive? (rnd 1 bound) (let [v (rnd (- bound) bound)] (if (zero? v) 1 v)))
+    :d (rnd 2 9)}))
+
+(defn- frac+ [a b]
+  (reduce-frac {:n (+ (* (:n a) (:d b)) (* (:n b) (:d a)))
+                :d (* (:d a) (:d b))}))
+
+(defn- frac- [a b]
+  (reduce-frac {:n (- (* (:n a) (:d b)) (* (:n b) (:d a)))
+                :d (* (:d a) (:d b))}))
+
+(defn- frac* [a b]
+  (reduce-frac {:n (* (:n a) (:n b))
+                :d (* (:d a) (:d b))}))
+
+(defn frac-gt? [a b]
+  (> (* (:n a) (:d b)) (* (:n b) (:d a))))
+
+(defn format-value [v]
+  (if (and (map? v) (contains? v :n) (contains? v :d))
+    (if (= 1 (:d v)) (str (:n v)) (str (:n v) "/" (:d v)))
+    (str v)))
+
 (defn level
   "Difficulty grows every five correct answers, capped at level 4."
   [correct]
@@ -102,49 +136,105 @@
       ("mixed" "all") :mixed
       (if (some #{"pos" "positive"} toks) :mixed :mixed))))
 
-(defn positive-mode?
-  "True when MODE asks for the all-positive numbers class."
+(defn fraction-mode?
+  "True when MODE asks for the fractions number class."
   [mode]
-  (boolean (some #{"pos" "positive"} (mode-tokens mode))))
+  (boolean (some #{"frac" "fraction" "fractions" "rational" "rationals"} (mode-tokens mode))))
+
+(defn positive-mode?
+  "True when MODE asks for an all-positive number class."
+  [mode]
+  (if (fraction-mode? mode)
+    (not (some #{"signed"} (mode-tokens mode)))
+    (boolean (some #{"pos" "positive"} (mode-tokens mode)))))
+
+(defn class-key
+  "Normalise a mode to one of :positive :signed :frac :frac-signed."
+  [mode]
+  (let [toks (mode-tokens mode)]
+    (cond
+      (fraction-mode? mode)
+      (if (some #{"signed"} toks) :frac-signed :frac)
+      (some #{"signed"} toks) :signed
+      :else :positive)))
 
 (defn combined-mode
   "Build a canonical combined mode keyword from an operation keyword and a
-  positive? flag."
-  [op positive?]
-  (keyword (str (name op) "-" (if positive? "positive" "signed"))))
+  class keyword (:positive/:signed/:frac/:frac-signed)."
+  [op class]
+  (keyword (str (name op) "-" (name class))))
+
+(declare frac-distractors)
 
 (defn gen-question [mode lvl]
   (let [pos? (positive-mode? mode)
+        frac? (fraction-mode? mode)
         op-key (operation-key mode)
         op (case op-key
              :sum :+
              :diff :-
              :mult :*
              :mixed (rand-nth [:+ :- :*]))
-        ;; Multiplication stays within single-digit operands.
         r (if (= op :*) 9 (bound-for lvl))
-        ;; For the all-positive class the result must also be positive, so a
-        ;; subtraction is arranged as a larger minuend minus a smaller one.
-        [a b] (if pos?
-                (let [x (operand r true)
-                      y (operand r true)]
-                  (if (and (= op :-) (<= x y))
-                    [y (max 1 (dec x))]
+        [a b] (if frac?
+                (let [x (make-fraction r pos?)
+                      y (make-fraction r pos?)]
+                  (if (and pos? (= op :-) (not (frac-gt? x y)))
+                    [y (make-fraction r pos?)]
                     [x y]))
-                [(operand r false) (operand r false)])
-        answer (case op :+ (+ a b) :- (- a b) :* (* a b))]
+                (if pos?
+                  (let [x (operand r true)
+                        y (operand r true)]
+                    (if (and (= op :-) (<= x y))
+                      [y (max 1 (dec x))]
+                      [x y]))
+                  [(operand r false) (operand r false)]))
+        answer (if frac?
+                 (case op :+ (frac+ a b) :- (frac- a b) :* (frac* a b))
+                 (case op :+ (+ a b) :- (- a b) :* (* a b)))]
     {:a a :b b :op op :answer answer
      :positive? pos?
-     :options (distractors answer a b op)
+     :frac? frac?
+     :options (if frac?
+                (frac-distractors answer a b op)
+                (distractors answer a b op))
      :started-at (js/Date.now)}))
 
-(defn question-text [{:keys [a b op positive?]}]
-  (let [sym (case op :+ "+" :- "-" :* "*")]
-    (if positive?
-      (str a " " sym " " b " = ?")
-      (str "(" a ") " sym " (" b ") = ?"))))
 
-;;; --- round lifecycle ----------------------------------------------------
+(defn- frac-distractors [answer a b op]
+  (let [candidates [(reduce-frac {:n (inc (:n answer)) :d (:d answer)})
+                    (reduce-frac {:n (dec (:n answer)) :d (:d answer)})
+                    (reduce-frac {:n (- (:n answer)) :d (:d answer)})
+                    (reduce-frac {:n (:n answer) :d (inc (:d answer))})
+                    (reduce-frac {:n (:n a) :d (:d b)})
+                    (reduce-frac {:n (:n b) :d (:d a)})]
+        picked (->> candidates
+                    (remove #(= % answer))
+                    distinct
+                    (take 3)
+                    vec)
+        fill (if (< (count picked) 3)
+               (->> (repeatedly 12
+                      #(reduce-frac {:n (rnd -9 9)
+                                     :d (rnd 2 9)}))
+                    (remove #(or (= % answer) (some #{%} picked)))
+                    distinct
+                    (take (- 3 (count picked))))
+               ())]
+    (shuffle (conj (into picked fill) answer))))
+
+(defn question-text [{:keys [a b op positive? frac?]}]
+  (let [sym (case op :+ "+" :- "-" :* "*")
+        fmt (fn [v] (if (and (map? v) (contains? v :n) (contains? v :d))
+                      (if (= 1 (:d v)) (str (:n v)) (str (:n v) "/" (:d v)))
+                      (str v)))]
+    (if frac?
+      (if positive?
+        (str (fmt a) " " sym " " (fmt b) " = ?")
+        (str "(" (fmt a) ") " sym " (" (fmt b) ") = ?"))
+      (if positive?
+        (str (fmt a) " " sym " " (fmt b) " = ?")
+        (str "(" (fmt a) ") " sym " (" (fmt b) ") = ?")))))
 
 (defn new-round [mode]
   (let [now (js/Date.now)

@@ -13,12 +13,15 @@
    [:mixed "∑"]])
 
 (def number-classes
-  [[:positive "1..n"]
-   [:signed   "±n"]])
+  [[:positive     "1..n"]
+   [:signed       "±n"]
+   [:frac         "1/2"]
+   [:frac-signed  "±1/2"]])
 
 (def translations
   {:en {:sum "SUM" :diff "DIFFERENCE" :mult "PRODUCT" :mixed "MIXED"
-        :positive "ALL POSITIVE" :signed "SIGNED"
+        :positive "ALL POSITIVE" :signed "SIGNED" :frac "FRACTIONS"
+        :frac-signed "SIGNED FRACTIONS"
         :personal-best "PERSONAL BEST" :no-record "no record yet - set one!"
         :start-round "START ROUND" :leaderboard "LEADERBOARD"
         :sound-on "SOUND ON" :sound-off "SOUND OFF"
@@ -38,7 +41,8 @@
         :server-unavailable "server unavailable"
         :lang "LANG"}
    :tr {:sum "TOPLAMA" :diff "ÇIKARMA" :mult "ÇARPMA" :mixed "KARIŞIK"
-        :positive "TÜMÜ POZİTİF" :signed "İŞARETLİ"
+        :positive "TÜMÜ POZİTİF" :signed "İŞARETLİ" :frac "KESİRLER"
+        :frac-signed "İŞARETLİ KESİRLER"
         :personal-best "KİŞİSEL REKOR" :no-record "henüz rekor yok - bir tane koy!"
         :start-round "TURU BAŞLAT" :leaderboard "LİDER TABLOSU"
         :sound-on "SES AÇIK" :sound-off "SES KAPALI"
@@ -63,6 +67,9 @@
   (or (get-in translations [lang k])
       (get-in translations [:en k]
              (name k))))
+
+(defn set-lang! [l]
+  (db/set-setting! :lang l))
 
 (defn- operation-label [op]
   (or (some (fn [[k l _]] (when (= k op) l)) operations) (name op)))
@@ -133,7 +140,7 @@
                  :on-click #(do (sound/play! :click)
                                 (db/set-setting! :mode
                                                 (game/combined-mode k
-                                                                   (game/positive-mode? current))))}
+                                                                   (game/class-key current))))}
         [:span.mode-example example]])]))
 
 (defn- class-picker []
@@ -142,11 +149,12 @@
     [:div.class-picker
      (for [[k example] number-classes]
        ^{:key (name k)}
-       [:button {:class (str "class" (when (= (= k :positive) (game/positive-mode? current)) " active"))
-
+       [:button {:class (str "class" (when (= k (game/class-key current)) " active"))
+                 :style (when (= k (game/class-key current))
+                          {:border-color "#ffcf4d" :color "#ffcf4d"})
                  :on-click #(do (db/set-setting! :mode
                                                 (game/combined-mode (game/operation-key current)
-                                                                   (= k :positive))))}
+                                                                   k)))}
         [:span.mode-example example]])]))
 
 (defn menu []
@@ -179,12 +187,13 @@
        (if (:sound settings) (str "♪ " (t lang :sound-on)) (str "♪ " (t lang :sound-off)))]
       [:button.icon-btn
        {:style (when (= lang :en) {:border-color "#ffcf4d" :color "#ffcf4d"})
-        :on-click #(db/set-setting! :lang :en)}
+        :on-click #(set-lang! :en)}
        "EN"]
       [:button.icon-btn
        {:style (when (= lang :tr) {:border-color "#ffcf4d" :color "#ffcf4d"})
-        :on-click #(db/set-setting! :lang :tr)}
-       "TR"]]]))
+        :on-click #(set-lang! :tr)}
+       "TR"]]
+     ]))
 
 ;;; --- play ---------------------------------------------------------------
 
@@ -204,7 +213,7 @@
       :disabled answered?
       :on-click #(game/answer! value)}
      [:span.opt-key (str (inc idx))]
-     [:span.opt-value (str value)]]))
+     [:span.opt-value (game/format-value value)]]))
 
 (defn play []
   (if-let [g @db/game]
@@ -348,14 +357,14 @@
             ^{:key (str "op-" (name k))}
             [:button {:class (str "tab" (when (= k (game/operation-key mode)) " active"))
                       :on-click #(do (sound/play! :click)
-                                     (fetch-board! (game/combined-mode k (game/positive-mode? mode))))}
+                                     (fetch-board! (game/combined-mode k (game/class-key mode))))}
              (t lang k)])]
          [:div.lb-tabs
           (for [[k example] number-classes]
             ^{:key (str "cls-" (name k))}
-            [:button {:class (str "tab" (when (= (= k :positive) (game/positive-mode? mode)) " active"))
+            [:button {:class (str "tab" (when (= k (game/class-key mode)) " active"))
                       :on-click #(do (sound/play! :click)
-                                     (fetch-board! (game/combined-mode (game/operation-key mode) (= k :positive))))}
+                                     (fetch-board! (game/combined-mode (game/operation-key mode) k)))}
              (t lang k)])]
          (case (:status board)
            :loading [:div.lb-body.dim (t lang :loading)]
@@ -405,8 +414,7 @@
                     [:span "[ENTER] start"]
                     [:span "[ESC] back"]]))]
     [:div.cabinet
-     [:header.marquee [bulbs]
-      [:h1 (str (t lang :math) " " (t lang :training) " " (t lang :machine))]]
+     [:header.marquee [bulbs]]
      [:main.screen-wrap
       (case screen
         :play        [play]

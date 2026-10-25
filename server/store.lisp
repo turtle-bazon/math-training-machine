@@ -17,7 +17,8 @@
     "mixed" "all"))
 
 (defparameter *class-tokens*
-  '("pos" "positive" "signed" "any"))
+  '("pos" "positive" "signed" "any"
+    "frac" "fraction" "fractions" "rational" "rationals"))
 
 (defvar *db* nil)
 (defvar *db-lock* (bt:make-lock "conskivi-leaderboard"))
