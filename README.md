@@ -144,7 +144,10 @@ the template is what gets committed.
   full for the maximum bonus; let it run out and the question counts as a miss.
 * Wrong answers break the combo. The last 10 seconds tick audibly.
 * Difficulty grows every 5 correct answers: operands move from ±10 to ±100.
-* Modes: `SUM`, `DIFFERENCE` and `MIXED`.
+* Operations: `SUM`, `DIFFERENCE`, `PRODUCT` (multiplication) and `MIXED`.
+* Number classes: `ALL POSITIVE` (positive operands only) and `SIGNED`
+  (positive and negative operands). The two are chosen independently, so a
+  round is, e.g., "PRODUCT · SIGNED".
 
 ## Tests
 

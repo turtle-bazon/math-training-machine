@@ -10,7 +10,7 @@
 
 (def settings
   "Persisted user settings: game mode, sound toggle, player name."
-  (r/atom {:mode :sum :sound true :name ""}))
+  (r/atom {:mode :sum-signed :sound true :name ""}))
 
 (def game
   "The round currently being played, or nil."

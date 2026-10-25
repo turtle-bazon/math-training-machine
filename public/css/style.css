@@ -192,12 +192,20 @@ button {
 
 .mode-picker {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 10px;
-  max-width: 640px;
-  margin: 0 auto;
+  max-width: 760px;
+  margin: 0 auto 12px;
 }
-.mode {
+
+.class-picker {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  max-width: 420px;
+  margin: 0 auto 12px;
+}
+.mode, .class {
   background: var(--panel);
   border: 2px solid var(--line);
   border-radius: 14px;
@@ -207,15 +215,15 @@ button {
   gap: 6px;
   transition: .15s;
 }
-.mode:hover { border-color: var(--cyan); transform: translateY(-2px); }
-.mode.active {
+.mode:hover, .class:hover { border-color: var(--cyan); transform: translateY(-2px); }
+.mode.active, .class.active {
   border-color: var(--gold);
   background: linear-gradient(180deg, #33265c, #221a44);
   box-shadow: 0 0 20px rgba(255, 207, 77, .25);
 }
-.mode-label { font-weight: 900; letter-spacing: .14em; font-size: 15px; }
-.mode-example { font-family: var(--mono); color: var(--dim); font-size: 13px; }
-.mode.active .mode-example { color: var(--gold); }
+.mode-label, .class-label { font-weight: 900; letter-spacing: .14em; font-size: 15px; }
+.mode-example, .class-example { font-family: var(--mono); color: var(--dim); font-size: 13px; }
+.mode.active .mode-example, .class.active .class-example { color: var(--gold); }
 
 .best-line { margin-top: 18px; font-size: 15px; letter-spacing: .06em; }
 .best-line b { color: var(--gold); font-family: var(--mono); font-size: 18px; }
@@ -499,6 +507,7 @@ button {
 @media (max-width: 620px) {
   .screen-wrap { padding: 12px; min-height: 520px; }
   .mode-picker { grid-template-columns: 1fr; }
+  .class-picker { grid-template-columns: 1fr; }
   .options { gap: 10px; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .lb-row { grid-template-columns: 40px 1fr 54px 84px; padding: 9px 10px; }
@@ -511,6 +520,7 @@ button {
   .tab { padding: 15px 18px; }
   .ghost { padding: 16px 20px; }
   .mode { padding: 18px 8px; }
+  .class { padding: 18px 8px; }
   .option { padding: 26px 10px; }
   .name-input { padding: 15px 14px; }
 }

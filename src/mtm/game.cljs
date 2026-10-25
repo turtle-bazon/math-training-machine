@@ -5,7 +5,8 @@
   speed bar; answering while the bar is full pays the biggest speed
   bonus, and letting it run out marks the question as missed."
   (:require [mtm.db :as db]
-            [mtm.sound :as sound]))
+            [mtm.sound :as sound]
+            [clojure.string :as str]))
 
 (def round-ms 60000)
 (def question-ms 6000)
@@ -35,10 +36,14 @@
 (defn- rnd [lo hi]
   (+ lo (rand-int (inc (- hi lo)))))
 
-(defn- operand [bound]
-  ;; keep zero out of play now and then: it makes sums trivial
-  (let [v (rnd (- bound) bound)]
-    (if (zero? v) (rnd 1 bound) v)))
+(defn- operand [bound positive?]
+  ;; `positive?` keeps every operand on the positive side of zero for the
+  ;; "all positive numbers" class; otherwise signed operands are used.
+  (if positive?
+    (let [v (rnd 1 bound)]
+      (if (zero? v) 1 v))
+    (let [v (rnd (- bound) bound)]
+      (if (zero? v) (rnd 1 bound) v))))
 
 (defn level
   "Difficulty grows every five correct answers, capped at level 4."
@@ -49,13 +54,18 @@
   (dec (nth difficulties (dec lvl))))
 
 (defn- distractors [answer a b op]
-  (let [candidates [(inc answer) (dec answer)
-                    (+ answer 10) (- answer 10)
-                    (- answer)
-                    (case op :+ (- a b) :- (+ a b))
-                    (+ answer 2) (- answer 2)
-                    (+ answer 5) (- answer 5)
-                    (+ answer 3) (- answer 3)]
+  (let [op-candidates (case op
+                        :+ [(- a b)]
+                        :- [(+ a b)]
+                        :* [(+ a b) (- a b) (* (inc a) b) (* a (inc b))]
+                        [])
+        candidates (concat [(inc answer) (dec answer)
+                           (+ answer 10) (- answer 10)
+                           (- answer)
+                           (+ answer 2) (- answer 2)
+                           (+ answer 5) (- answer 5)
+                           (+ answer 3) (- answer 3)]
+                          op-candidates)
         picked (->> candidates
                     (remove #{answer})
                     distinct
@@ -69,21 +79,69 @@
                ())]
     (shuffle (conj (into picked fill) answer))))
 
+(def op-tokens #{"sum" "add" "plus"
+                 "diff" "subtract" "minus" "sub"
+                 "mult" "multiply" "prod" "product" "times"
+                 "mixed" "all"})
+
+(def class-tokens #{"pos" "positive" "signed" "any"})
+
+(defn mode-tokens [mode]
+  (str/split (str/lower-case (name (or mode :sum-signed))) #"[-_ ]+"))
+
+(defn operation-key
+  "Normalise a mode (keyword or string, possibly combined like
+  `sum-positive` or `positive-sum`) to one of :sum :diff :mult :mixed."
+  [mode]
+  (let [toks (mode-tokens mode)
+        op (some op-tokens toks)]
+    (case op
+      ("sum" "add" "plus") :sum
+      ("diff" "subtract" "minus" "sub") :diff
+      ("mult" "multiply" "prod" "product" "times") :mult
+      ("mixed" "all") :mixed
+      (if (some #{"pos" "positive"} toks) :mixed :mixed))))
+
+(defn positive-mode?
+  "True when MODE asks for the all-positive numbers class."
+  [mode]
+  (boolean (some #{"pos" "positive"} (mode-tokens mode))))
+
+(defn combined-mode
+  "Build a canonical combined mode keyword from an operation keyword and a
+  positive? flag."
+  [op positive?]
+  (keyword (str (name op) "-" (if positive? "positive" "signed"))))
+
 (defn gen-question [mode lvl]
   (let [r (bound-for lvl)
-        a (operand r)
-        b (operand r)
-        op (case mode
+        pos? (positive-mode? mode)
+        op-key (operation-key mode)
+        op (case op-key
+             :sum :+
              :diff :-
-             :mixed (if (zero? (rand-int 2)) :+ :-)
-             :+)
-        answer (case op :+ (+ a b) :- (- a b))]
+             :mult :*
+             :mixed (rand-nth [:+ :- :*]))
+        ;; For the all-positive class the result must also be positive, so a
+        ;; subtraction is arranged as a larger minuend minus a smaller one.
+        [a b] (if pos?
+                (let [x (operand r true)
+                      y (operand r true)]
+                  (if (and (= op :-) (<= x y))
+                    [y (max 1 (dec x))]
+                    [x y]))
+                [(operand r false) (operand r false)])
+        answer (case op :+ (+ a b) :- (- a b) :* (* a b))]
     {:a a :b b :op op :answer answer
+     :positive? pos?
      :options (distractors answer a b op)
      :started-at (js/Date.now)}))
 
-(defn question-text [{:keys [a b op]}]
-  (str "(" a ") " (if (= op :+) "+" "-") " (" b ") = ?"))
+(defn question-text [{:keys [a b op positive?]}]
+  (let [sym (case op :+ "+" :- "-" :* "*")]
+    (if positive?
+      (str a " " sym " " b " = ?")
+      (str "(" a ") " sym " (" b ") = ?"))))
 
 ;;; --- round lifecycle ----------------------------------------------------
 

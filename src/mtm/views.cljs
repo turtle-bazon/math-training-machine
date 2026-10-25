@@ -6,13 +6,23 @@
             [mtm.sound :as sound]
             [mtm.api :as api]))
 
-(def modes
-  [[:sum   "SUM"        "(-7) + 12"]
-   [:diff  "DIFFERENCE" "5 - (-9)"]
-   [:mixed "MIXED"      "both, mixed"]])
+(def operations
+  [[:sum   "SUM"         "+"]
+   [:diff  "DIFFERENCE"  "-"]
+   [:mult  "PRODUCT"     "*"]
+   [:mixed "MIXED"       "all"]])
+
+(def number-classes
+  [[:positive "ALL POSITIVE" "1..n"]
+   [:signed   "SIGNED"       "±n"]])
+
+(defn- operation-label [op]
+  (or (some (fn [[k l _]] (when (= k op) l)) operations) (name op)))
 
 (defn- mode-label [m]
-  (or (some (fn [[k l _]] (when (= k m) l)) modes) (name m)))
+  (str (operation-label (game/operation-key m))
+       " "
+       (if (game/positive-mode? m) "POSITIVE" "SIGNED")))
 
 ;;; --- shared bits --------------------------------------------------------
 
@@ -62,14 +72,30 @@
 
 ;;; --- menu ---------------------------------------------------------------
 
-(defn- mode-picker []
+(defn- operation-picker []
   (let [current (:mode @db/settings)]
     [:div.mode-picker
-     (for [[k label example] modes]
+     (for [[k label example] operations]
        ^{:key (name k)}
-       [:button.mode
-        {:class (when (= k current) "active")
-         :on-click #(do (sound/play! :click) (db/set-setting! :mode k))}
+       [:button {:class (str "mode" (when (= k (game/operation-key current)) " active"))
+
+                 :on-click #(do (sound/play! :click)
+                                (db/set-setting! :mode
+                                                (game/combined-mode k
+                                                                   (game/positive-mode? current))))}
+        [:span.mode-label label]
+        [:span.mode-example example]])]))
+
+(defn- class-picker []
+  (let [current (:mode @db/settings)]
+    [:div.class-picker
+     (for [[k label example] number-classes]
+       ^{:key (name k)}
+       [:button {:class (str "class" (when (= (= k :positive) (game/positive-mode? current)) " active"))
+
+                 :on-click #(do (db/set-setting! :mode
+                                                (game/combined-mode (game/operation-key current)
+                                                                   (= k :positive))))}
         [:span.mode-label label]
         [:span.mode-example example]])]))
 
@@ -81,7 +107,8 @@
       [:div.logo-top "MATH"]
       [:div.logo-mid "TRAINING"]
       [:div.logo-bot "MACHINE"]]
-     [mode-picker]
+     [operation-picker]
+      [class-picker]
      [:div.best-line
       (if best
         [:span "PERSONAL BEST  " [:b (str best)] " pts"]
@@ -249,12 +276,19 @@
            {:on-click #(fetch-board! mode)} "↻ REFRESH"]]
          [:div.lb-title "LEADERBOARD"]
          [:div.lb-tabs
-          (for [[k label] modes]
-            ^{:key (name k)}
-            [:button.tab {:class (when (= k mode) "active")
+          (for [[k label _] operations]
+            ^{:key (str "op-" (name k))}
+            [:button {:class (str "tab" (when (= k (game/operation-key mode)) " active"))
                           :on-click #(do (sound/play! :click)
-                                         (fetch-board! k))}
+                                         (fetch-board! (game/combined-mode k (game/positive-mode? mode))))}
              label])]
+          [:div.lb-tabs
+           (for [[k label _] number-classes]
+             ^{:key (str "cls-" (name k))}
+             [:button {:class (str "tab" (when (= (= k :positive) (game/positive-mode? mode)) " active"))
+                           :on-click #(do (sound/play! :click)
+                                          (fetch-board! (game/combined-mode (game/operation-key mode) (= k :positive))))}
+              label])]
          (case (:status board)
            :loading [:div.lb-body.dim "loading..."]
            :error   [:div.lb-body.dim "server unavailable"]

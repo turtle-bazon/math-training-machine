@@ -10,13 +10,51 @@
 
 (defparameter *max-entries* 100)
 
-(defparameter *modes* '("sum" "diff" "mixed"))
+(defparameter *operation-tokens*
+  '("sum" "add" "plus"
+    "diff" "difference" "subtract" "minus" "sub"
+    "mult" "multiply" "product" "prod" "times"
+    "mixed" "all"))
+
+(defparameter *class-tokens*
+  '("pos" "positive" "signed" "any"))
 
 (defvar *db* nil)
 (defvar *db-lock* (bt:make-lock "conskivi-leaderboard"))
 
+(defun split-mode-tokens (mode)
+  (let ((out '())
+        (start 0)
+        (len (length mode)))
+    (labels ((sep-p (c) (or (char= c #\-) (char= c #\_) (char= c #\Space))))
+      (loop for i from 0 below len
+            when (sep-p (char mode i))
+              do (when (> i start)
+                   (push (string-downcase (subseq mode start i)) out))
+                 (setf start (1+ i)))
+      (when (> len start)
+        (push (string-downcase (subseq mode start len)) out))
+      (nreverse out))))
+
+(defun operation-token-p (tok)
+  (member tok *operation-tokens* :test #'string=))
+
+(defun class-token-p (tok)
+  (member tok *class-tokens* :test #'string=))
+
 (defun mode-p (mode)
-  (member mode *modes* :test #'string=))
+  "Accept legacy operation modes, the two number classes, and any
+  combination of an operation token with a class token (in either order)."
+  (and (stringp mode) (plusp (length mode))
+       (let ((toks (split-mode-tokens mode)))
+         (cond
+           ((= (length toks) 1)
+            (or (operation-token-p (first toks))
+                (class-token-p (first toks))))
+           ((= (length toks) 2)
+            (and (or (operation-token-p (first toks)) (class-token-p (first toks)))
+                 (or (operation-token-p (second toks)) (class-token-p (second toks)))))
+           (t nil)))))
 
 (defun lb-key (mode)
   (intern (format nil "LB-~a" (string-upcase mode)) :keyword))
