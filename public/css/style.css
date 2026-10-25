@@ -143,7 +143,7 @@ button {
   padding: 12px 20px;
 }
 .ghost:hover { border-color: var(--cyan); color: var(--cyan); }
-.share-btn { border-color: var(--cyan); color: var(--cyan); display: inline-flex; align-items: center; justify-content: center; padding: 10px 12px; }
+.share-btn { border-color: var(--cyan); color: var(--cyan); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 12px; }
 .share-btn:hover { background: var(--cyan); color: #070912; }
 
 .icon-btn {
@@ -488,15 +488,15 @@ button {
   color: var(--cyan);
   margin: 6px 0 16px;
 }
-.lb-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+.lb-tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
 .tab {
   background: #141a42;
   border: 2px solid var(--line);
   border-radius: 10px;
-  padding: 9px 18px;
-  font-size: 13px;
+  padding: 6px 10px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: .12em;
+  letter-spacing: .08em;
   color: var(--dim);
 }
 .tab.active { border-color: var(--gold); color: var(--gold); background: #2a2050; }

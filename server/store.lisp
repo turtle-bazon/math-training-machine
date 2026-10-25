@@ -55,6 +55,10 @@
            ((= (length toks) 2)
             (and (or (operation-token-p (first toks)) (class-token-p (first toks)))
                  (or (operation-token-p (second toks)) (class-token-p (second toks)))))
+           ((= (length toks) 3)
+            (and (operation-token-p (first toks))
+                 (class-token-p (second toks))
+                 (class-token-p (third toks))))
            (t nil)))))
 
 (defun lb-key (mode)

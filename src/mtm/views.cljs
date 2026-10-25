@@ -92,13 +92,15 @@
       tg
       (str base "#" (source-tag) ":" (db/device-id)))))
 
-(defn share! []
-  (let [url (.-href js/location)]
+(defn share! [& [text]]
+  (let [url (.-href js/location)
+        title "Math Training Machine"
+        share-text (or text title)]
     (if (and (exists? js/navigator) (.-share js/navigator))
-      (.share js/navigator #js{:title "Math Training Machine" :url url})
+      (.share js/navigator #js{:title title :text share-text :url url})
       (do
         (when (.-clipboard js/navigator)
-          (.writeText (.-clipboard js/navigator) url))
+          (.writeText (.-clipboard js/navigator) (str share-text " " url)))
         (js/alert (if (= (or (:lang @db/settings) :en) :tr) "Bağlantı kopyalandı" "Link copied"))))))
 
 (defn- operation-label [op]
@@ -344,6 +346,17 @@
          [:div.big-buttons
           [:button.primary.big
            {:on-click #(game/start-round! (:mode res))} (t lang :play-again)]
+          [:button.ghost.share-btn
+           {:on-click #(share! (str (t lang :score) ": " (:score res)))}
+           [:svg {:width 20 :height 20 :viewBox "0 0 24 24" :fill "none"
+                  :stroke "currentColor" :stroke-width 2 :stroke-linecap "round"
+                  :stroke-linejoin "round"}
+            [:circle {:cx 18 :cy 5 :r 3}]
+            [:circle {:cx 6 :cy 12 :r 3}]
+            [:circle {:cx 18 :cy 19 :r 3}]
+            [:line {:x1 8.59 :y1 13.51 :x2 15.42 :y2 17.49}]
+            [:line {:x1 15.41 :y1 6.51 :x2 8.59 :y2 10.49}]]
+           (if (= lang :tr) "PAYLAŞ" "SHARE")]
           [:button.ghost
            {:on-click #(do (sound/play! :leaderboard)
                            (swap! db/state assoc :screen :leaderboard))}
