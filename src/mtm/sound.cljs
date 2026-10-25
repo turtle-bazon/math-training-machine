@@ -53,7 +53,7 @@
       (.exponentialRampToValueAtTime (.-gain env) gain (+ start 0.012))
       (.exponentialRampToValueAtTime (.-gain env) 0.0001 (+ start dur))
       (.connect osc env)
-      (.connect env @master)
+      (.connect env (or @master (.-destination c)))
       (.start osc start)
       (.stop osc (+ start dur 0.05)))))
 
@@ -76,7 +76,7 @@
         (set! (.-buffer src) buf)
         (.connect src filt)
         (.connect filt env)
-        (.connect env @master)
+        (.connect env (or @master (.-destination c)))
         (.start src start)
         (.stop src (+ start dur 0.02))))))
 
@@ -90,11 +90,15 @@
                (tone 740 {:type "triangle" :dur 0.1 :gain 0.16})
                (tone 1180 {:type "triangle" :delay 0.06 :dur 0.16 :gain 0.14}))
    :wrong     (fn []
-               (tone 190 {:type "sawtooth" :dur 0.28 :gain 0.16 :to 90})
-               (noise-burst 0 0.12 0.08))
+               (tone 120 {:type "square" :dur 0.18 :gain 0.22})
+               (tone 80  {:type "sawtooth" :delay 0.12 :dur 0.25 :gain 0.2 :to 40})
+               (noise-burst 0 0.18 0.12))
    :timeout   (fn []
-               (tone 320 {:type "sine" :dur 0.2 :gain 0.14 :to 160})
-               (tone 160 {:type "sine" :delay 0.14 :dur 0.26 :gain 0.12}))
+               (tone 880 {:type "square" :dur 0.12 :gain 0.24})
+               (tone 660 {:type "square" :delay 0.12 :dur 0.12 :gain 0.22})
+               (tone 440 {:type "square" :delay 0.24 :dur 0.12 :gain 0.2})
+               (tone 220 {:type "square" :delay 0.36 :dur 0.2 :gain 0.18})
+               (noise-burst 0 0.4 0.12))
    :tick      #(tone 1400 {:type "square" :dur 0.045 :gain 0.05})
    :start     (fn []
                (tone 392 {:type "triangle" :dur 0.14 :gain 0.16})

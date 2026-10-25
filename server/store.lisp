@@ -147,25 +147,73 @@ Caller must hold *DB-LOCK*."
         (conskivi-core:conskivi-zrem *db* key id)
         (conskivi-core:conskivi-del *db* (rec-key id))))))
 
+
+(defun same-name-ids (mode name)
+  "IDs of records in MODE whose :name equals NAME."
+  (let* ((key (lb-key mode))
+         (n   (conskivi-core:conskivi-zcard *db* key))
+         (out '()))
+    (when (plusp n)
+      (let ((flat (conskivi-core:conskivi-zrevrange *db* key 0 (1- n) t)))
+        (loop for (member score) on flat by #'cddr
+              for rec = (conskivi-core:conskivi-get *db* (rec-key member))
+              when (and rec (string= (getf rec :name) name))
+                do (push member out))))
+    (nreverse out)))
+
+(defun best-same-name (mode name)
+  "The (id . record) of the highest-scoring record in MODE for NAME, or NIL."
+  (let ((ids (same-name-ids mode name)))
+    (when ids
+      (let ((best-id (first ids))
+            (best-score -1)
+            (best-rec nil))
+        (dolist (id ids)
+          (let ((rec (conskivi-core:conskivi-get *db* (rec-key id))))
+            (when (and rec (> (getf rec :score) best-score))
+              (setf best-score (getf rec :score)
+                    best-id id
+                    best-rec rec))))
+        (cons best-id best-rec)))))
+
 (defun add-score (record)
-  "Persist a finished round. RECORD is a plist, returns plist with :rank."
+  "Persist a finished round. RECORD is a plist, returns plist with :rank.
+  If an entry with the same name already exists in the mode with a score
+  greater than or equal to the new one, the new (lower) score is ignored
+  and the existing entry's rank is returned. Otherwise any older entries
+  for that name are replaced by the new (higher) score."
   (bt:with-lock-held (*db-lock*)
-    (let* ((id   (make-id))
+    (let* ((name (getf record :name))
            (mode (getf record :mode))
-           (key  (lb-key mode))
-           (full (list :id          id
-                       :name        (getf record :name)
-                       :mode        mode
-                       :score       (getf record :score)
-                       :correct     (getf record :correct)
-                       :total       (getf record :total)
-                       :best-streak (or (getf record :best-streak) 0)
-                       :avg-ms      (or (getf record :avg-ms) 0)
-                       :ts          (get-universal-time))))
-      (conskivi-core:conskivi-put *db* (rec-key id) full)
-      (conskivi-core:conskivi-zadd *db* key (float (getf full :score)) id)
-      (trim! mode)
-      (conskivi-fileonly:conskivi-save *db*)
-      (append (list :id id)
-              (record-fields full)
-              (list :rank (rank-of* id mode))))))
+           (score (getf record :score))
+           (existing (best-same-name mode name))
+           (existing-id (car existing))
+           (existing-rec (cdr existing)))
+      (if (and existing-id existing-rec (>= (getf existing-rec :score) score))
+          ;; ignore the lower (or equal) score
+          (append (list :id existing-id)
+                  (record-fields existing-rec)
+                  (list :rank (rank-of* existing-id mode)
+                        :ignored t))
+          (let* ((id   (make-id))
+                 (key  (lb-key mode))
+                 (full (list :id          id
+                             :name        name
+                             :mode        mode
+                             :score       score
+                             :correct     (getf record :correct)
+                             :total       (getf record :total)
+                             :best-streak (or (getf record :best-streak) 0)
+                             :avg-ms      (or (getf record :avg-ms) 0)
+                             :ts          (get-universal-time))))
+            ;; drop any older, lower entries for the same name
+            (dolist (old-id (same-name-ids mode name))
+              (conskivi-core:conskivi-zrem *db* key old-id)
+              (conskivi-core:conskivi-del *db* (rec-key old-id)))
+            (conskivi-core:conskivi-put *db* (rec-key id) full)
+            (conskivi-core:conskivi-zadd *db* key (float (getf full :score)) id)
+            (trim! mode)
+            (conskivi-fileonly:conskivi-save *db*)
+            (append (list :id id)
+                    (record-fields full)
+                    (list :rank (rank-of* id mode))))))))

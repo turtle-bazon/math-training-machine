@@ -10,7 +10,7 @@
   [[:sum   "+"]
    [:diff  "-"]
    [:mult  "*"]
-   [:mixed "all"]])
+   [:mixed "∑"]])
 
 (def number-classes
   [[:positive "1..n"]
@@ -32,8 +32,10 @@
         :name-placeholder "your name" :save-score "SAVE SCORE"
         :play-again "PLAY AGAIN" :menu "MENU" :mode "MODE"
         :math "MATH" :training "TRAINING" :machine "MACHINE"
+        :operation "OPERATION" :numbers "NUMBERS"
         :back "BACK" :refresh "REFRESH" :loading "loading..."
         :no-scores "no scores yet - be the first"
+        :server-unavailable "server unavailable"
         :lang "LANG"}
    :tr {:sum "TOPLAMA" :diff "ÇIKARMA" :mult "ÇARPMA" :mixed "KARIŞIK"
         :positive "TÜMÜ POZİTİF" :signed "İŞARETLİ"
@@ -50,8 +52,10 @@
         :name-placeholder "adın" :save-score "SKORU KAYDET"
         :play-again "TEKRAR OYNA" :menu "MENÜ" :mode "MOD"
         :math "MATEMATİK" :training "ANTRENMAN" :machine "MAKİNESİ"
+        :operation "İŞLEM" :numbers "SAYILAR"
         :back "GERİ" :refresh "YENİLE" :loading "yükleniyor..."
         :no-scores "henüz skor yok - ilk sen ol"
+        :server-unavailable "sunucuya ulaşılamıyor"
         :lang "DİL"}})
 
 (defn t
@@ -63,10 +67,10 @@
 (defn- operation-label [op]
   (or (some (fn [[k l _]] (when (= k op) l)) operations) (name op)))
 
-(defn- mode-label [m]
-  (str (operation-label (game/operation-key m))
+(defn- mode-label [m lang]
+  (str (t (or lang :en) (game/operation-key m))
        " "
-       (if (game/positive-mode? m) "POSITIVE" "SIGNED")))
+       (if (game/positive-mode? m) (t (or lang :en) :positive) (t (or lang :en) :signed))))
 
 ;;; --- shared bits --------------------------------------------------------
 
@@ -130,7 +134,6 @@
                                 (db/set-setting! :mode
                                                 (game/combined-mode k
                                                                    (game/positive-mode? current))))}
-        [:span.mode-label (t lang k)]
         [:span.mode-example example]])]))
 
 (defn- class-picker []
@@ -144,7 +147,6 @@
                  :on-click #(do (db/set-setting! :mode
                                                 (game/combined-mode (game/operation-key current)
                                                                    (= k :positive))))}
-        [:span.mode-label (t lang k)]
         [:span.mode-example example]])]))
 
 (defn menu []
@@ -156,7 +158,9 @@
       [:div.logo-top (t lang :math)]
       [:div.logo-mid (t lang :training)]
       [:div.logo-bot (t lang :machine)]]
+     [:div.picker-label (t lang :operation)]
      [operation-picker]
+     [:div.picker-label (t lang :numbers)]
       [class-picker]
      [:div.best-line
       (if best
@@ -189,9 +193,11 @@
         answer    (get-in g [:question :answer])
         picked?   (= value (:picked g))
         correct?  (= value answer)
+        timeout?  (= (:outcome g) :timeout)
         class     (cond
-                    (and answered? correct?) "opt correct"
-                    (and answered? picked?)  "opt wrong"
+                    (and answered? correct? timeout?) "opt timeout"
+                    (and answered? correct?)          "opt correct"
+                    (and answered? picked?)          "opt wrong"
                     :else "opt")]
     [:button.option
      {:class class
@@ -253,7 +259,7 @@
          [:div.result-head (t lang :round-over)]
          [:div.score-big (str (:score res))]
          [:div.score-caption
-          (str (mode-label (:mode res)) " " (t lang :mode))
+          (str (mode-label (:mode res) lang) " " (t lang :mode))
           (when (:saved-best res) [:span.newbest (str " " (t lang :new-best))])]
          [:div.stats
           [stat (t lang :correct)   (str (:correct res) "/" (:total res)) nil]
@@ -273,10 +279,10 @@
            (map? st)
            [:div.saved
             [:span (if (= lang :tr)
-                     (str (mode-label (:mode res)) " tablosunda #"
+                     (str (mode-label (:mode res) lang) " tablosunda #"
                           (str (or (:rank st) "?")) ". sıradasın")
                      (str "ranked #" (str (or (:rank st) "?"))
-                          " on the " (mode-label (:mode res)) " board"))]]
+                          " on the " (mode-label (:mode res) lang) " board"))]]
 
            :else
            [:div.save-row
@@ -353,7 +359,7 @@
              (t lang k)])]
          (case (:status board)
            :loading [:div.lb-body.dim (t lang :loading)]
-           :error   [:div.lb-body.dim "server unavailable"]
+           :error   [:div.lb-body.dim (t lang :server-unavailable)]
            (if (seq (:entries board))
              [:div.lb-body
               (doall

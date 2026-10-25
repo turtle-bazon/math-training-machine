@@ -163,7 +163,8 @@
      :total 0
      :sum-ms 0
      :last-points 0
-     :tick-warned nil}))
+     :tick-warned nil
+     :last-beep nil}))
 
 (defn- combo [streak]
   (+ 1 (* 0.25 (min 8 (max 0 (dec streak))))))
@@ -181,7 +182,8 @@
            :answered? false
            :picked nil
            :outcome nil
-           :last-points 0)))
+           :last-points 0
+           :last-beep nil)))
 
 (defn- settle
   "Common path for correct / wrong / timed out answers."
@@ -278,9 +280,20 @@
             (when (and (<= sec 10) (pos? sec) (not= sec (:tick-warned g)))
               (swap! db/game assoc :tick-warned sec)
               (sound/play! :tick)))
+          ;; accelerating countdown beep as the question timer runs out
+          (when (and (not (:answered? g)) (pos? qleft) (<= qleft 3000))
+            (let [interval (cond (<= qleft 1000) 250
+                                 (<= qleft 2000) 500
+                                 :else 1000)
+                  last-beep (:last-beep g)]
+              (when (or (nil? last-beep) (>= (- now last-beep) interval))
+                (sound/unlock!)
+                (sound/play! :tick)
+                (swap! db/game assoc :last-beep now))))
           ;; a question nobody answered in time
           (when (and (not (:answered? g)) (<= qleft 0))
             (let [resolved (settle g :timeout nil now)]
+              (sound/unlock!)
               (feedback-sounds :timeout 0)
               (swap! db/game (constantly resolved))
               (schedule-next!)))
@@ -312,6 +325,7 @@
             right? (= choice (get-in g [:question :answer]))
             outcome (if right? :correct :wrong)
             resolved (settle g outcome choice now)]
+        (sound/unlock!)
         (sound/play! :select)
         (feedback-sounds outcome (:streak resolved))
         (swap! db/game (constantly resolved))
