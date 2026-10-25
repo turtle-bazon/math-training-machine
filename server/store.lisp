@@ -262,7 +262,7 @@ Caller must hold *DB-LOCK*."
       (let ((v (conskivi-core:conskivi-get *db* k)))
         (when (numberp v)
           (push (list (subseq (symbol-name k) (length prefix)) v) out))))
-    (sort out #'> :key #'second)))
+    out))
 
 
 (defun collect-daily-unique (days)
@@ -282,7 +282,7 @@ Caller must hold *DB-LOCK*."
 
 (defparameter *all-game-types*
   (let ((ops '("sum" "diff" "mult" "mixed"))
-        (cls '("positive" "signed" "frac" "frac-signed")))
+        (cls '("signed" "positive" "frac-signed" "frac")))
     (loop for op in ops
           append (loop for cl in cls
                        collect (format nil "~a-~a" op cl)))))
@@ -292,7 +292,7 @@ Caller must hold *DB-LOCK*."
     (dolist (m *all-game-types*)
       (let ((score (conskivi-core:conskivi-zscore *db* :game-types m)))
         (push (list m (if score (round score) 0)) out)))
-    (sort out #'> :key #'second)))
+    (nreverse out)))
 
 
 (defun collect-game-type-daily (mode days)
