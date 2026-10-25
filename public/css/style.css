@@ -480,7 +480,7 @@ button {
 /* ---------- leaderboard ---------- */
 
 .leaderboard { text-align: center; }
-.lb-head { display: flex; justify-content: space-between; }
+.lb-head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 .lb-title {
   font-size: clamp(24px, 5vw, 40px);
   font-weight: 900;
@@ -533,7 +533,9 @@ button {
   .class-picker { grid-template-columns: repeat(2, 1fr); }
   .options { gap: 10px; }
   .stats { grid-template-columns: repeat(2, 1fr); }
-  .lb-row { grid-template-columns: 40px 1fr 54px 84px; padding: 9px 10px; }
+  .lb-row { grid-template-columns: 40px 1fr 70px; padding: 9px 10px; }
+  .lb-acc { display: none; }
+  .lb-tabs { flex-wrap: wrap; }
   .controls { gap: 12px; font-size: 10px; }
 }
 

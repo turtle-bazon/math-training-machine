@@ -123,6 +123,5 @@
   (let [on? (not (:sound @db/settings))]
     (db/set-setting! :sound on?)
     (when on?
-      (unlock!)
-      (play! :click))
+      (unlock!))
     on?))

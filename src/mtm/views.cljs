@@ -82,11 +82,15 @@
                 (str (.-id u))))))))
     (catch :default _ nil)))
 
+(defn- source-tag []
+  (or (some-> js/window .-MTM_SOURCE str)
+      "web"))
+
 (defn- source-name [base]
   (let [tg (telegram-user-id)]
     (if tg
       tg
-      (str base "#source:" (db/device-id)))))
+      (str base "#" (source-tag) ":" (db/device-id)))))
 
 (defn share! []
   (let [url (.-href js/location)]
@@ -163,10 +167,9 @@
        ^{:key (name k)}
        [:button {:class (str "mode" (when (= k (game/operation-key current)) " active"))
 
-                 :on-click #(do (sound/play! :click)
-                                (db/set-setting! :mode
-                                                (game/combined-mode k
-                                                                   (game/class-key current))))}
+                 :on-click #(db/set-setting! :mode
+                                            (game/combined-mode k
+                                                               (game/class-key current)))}
         [:span.mode-example example]])]))
 
 (defn- class-picker []
@@ -392,16 +395,14 @@
           (for [[k example] operations]
             ^{:key (str "op-" (name k))}
             [:button {:class (str "tab" (when (= k (game/operation-key mode)) " active"))
-                      :on-click #(do (sound/play! :click)
-                                     (fetch-board! (game/combined-mode k (game/class-key mode))))}
-             (t lang k)])]
+                      :on-click #(fetch-board! (game/combined-mode k (game/class-key mode)))}
+             example])]
          [:div.lb-tabs
           (for [[k example] number-classes]
             ^{:key (str "cls-" (name k))}
             [:button {:class (str "tab" (when (= k (game/class-key mode)) " active"))
-                      :on-click #(do (sound/play! :click)
-                                     (fetch-board! (game/combined-mode (game/operation-key mode) k)))}
-             (t lang k)])]
+                      :on-click #(fetch-board! (game/combined-mode (game/operation-key mode) k))}
+             example])]
          (case (:status board)
            :loading [:div.lb-body.dim (t lang :loading)]
            :error   [:div.lb-body.dim (t lang :server-unavailable)]
