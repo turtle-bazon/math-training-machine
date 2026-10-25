@@ -143,8 +143,17 @@ button {
   padding: 12px 20px;
 }
 .ghost:hover { border-color: var(--cyan); color: var(--cyan); }
-.share-btn { border-color: var(--cyan); color: var(--cyan); display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 12px; }
-.share-btn:hover { background: var(--cyan); color: #070912; }
+.share-btn {
+  border-color: var(--gold); color: var(--gold);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 12px;
+  animation: share-pulse 1.2s ease-in-out infinite;
+}
+.share-btn:hover { animation: none; background: var(--gold); color: #070912; }
+@keyframes share-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 207, 77, .75); background: transparent; }
+  50% { box-shadow: 0 0 14px 4px rgba(255, 207, 77, .6); background: rgba(255, 207, 77, .15); }
+}
 
 .icon-btn {
   background: #1a2150;
