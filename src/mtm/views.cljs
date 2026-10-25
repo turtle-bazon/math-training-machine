@@ -7,14 +7,58 @@
             [mtm.api :as api]))
 
 (def operations
-  [[:sum   "SUM"         "+"]
-   [:diff  "DIFFERENCE"  "-"]
-   [:mult  "PRODUCT"     "*"]
-   [:mixed "MIXED"       "all"]])
+  [[:sum   "+"]
+   [:diff  "-"]
+   [:mult  "*"]
+   [:mixed "all"]])
 
 (def number-classes
-  [[:positive "ALL POSITIVE" "1..n"]
-   [:signed   "SIGNED"       "±n"]])
+  [[:positive "1..n"]
+   [:signed   "±n"]])
+
+(def translations
+  {:en {:sum "SUM" :diff "DIFFERENCE" :mult "PRODUCT" :mixed "MIXED"
+        :positive "ALL POSITIVE" :signed "SIGNED"
+        :personal-best "PERSONAL BEST" :no-record "no record yet - set one!"
+        :start-round "START ROUND" :leaderboard "LEADERBOARD"
+        :sound-on "SOUND ON" :sound-off "SOUND OFF"
+        :score "SCORE" :streak "STREAK" :time "TIME"
+        :miss "MISS" :too-slow "TOO SLOW"
+        :round-over "ROUND OVER" :new-best "NEW BEST!"
+        :correct "CORRECT" :accuracy "ACCURACY" :best-streak "BEST STREAK"
+        :avg-reaction "AVG REACTION" :saving "saving score..."
+        :unreachable "server unreachable - score kept on this device"
+        :retry "RETRY" :ranked-on "on the" :board "board"
+        :name-placeholder "your name" :save-score "SAVE SCORE"
+        :play-again "PLAY AGAIN" :menu "MENU" :mode "MODE"
+        :math "MATH" :training "TRAINING" :machine "MACHINE"
+        :back "BACK" :refresh "REFRESH" :loading "loading..."
+        :no-scores "no scores yet - be the first"
+        :lang "LANG"}
+   :tr {:sum "TOPLAMA" :diff "ÇIKARMA" :mult "ÇARPMA" :mixed "KARIŞIK"
+        :positive "TÜMÜ POZİTİF" :signed "İŞARETLİ"
+        :personal-best "KİŞİSEL REKOR" :no-record "henüz rekor yok - bir tane koy!"
+        :start-round "TURU BAŞLAT" :leaderboard "LİDER TABLOSU"
+        :sound-on "SES AÇIK" :sound-off "SES KAPALI"
+        :score "SKOR" :streak "SERİ" :time "SÜRE"
+        :miss "HATA" :too-slow "ÇOK YAVAŞ"
+        :round-over "TUR BİTTİ" :new-best "YENİ REKOR!"
+        :correct "DOĞRU" :accuracy "İSABET" :best-streak "EN İYİ SERİ"
+        :avg-reaction "ORT. TEPKİ" :saving "skor kaydediliyor..."
+        :unreachable "sunucuya ulaşılamıyor - skor bu cihazda saklandı"
+        :retry "YENİDEN DENE" :ranked-on "tablosunda" :board ""
+        :name-placeholder "adın" :save-score "SKORU KAYDET"
+        :play-again "TEKRAR OYNA" :menu "MENÜ" :mode "MOD"
+        :math "MATEMATİK" :training "ANTRENMAN" :machine "MAKİNESİ"
+        :back "GERİ" :refresh "YENİLE" :loading "yükleniyor..."
+        :no-scores "henüz skor yok - ilk sen ol"
+        :lang "DİL"}})
+
+(defn t
+  [lang k]
+  (or (get-in translations [lang k])
+      (get-in translations [:en k]
+             (name k))))
 
 (defn- operation-label [op]
   (or (some (fn [[k l _]] (when (= k op) l)) operations) (name op)))
@@ -42,40 +86,43 @@
 
 (defn- hud [g]
   (let [left    (game/time-left g)
-        seconds (Math/ceil (/ left 1000))]
+        seconds (Math/ceil (/ left 1000))
+        lang (or (:lang @db/settings) :en)]
     [:div.hud
      [:div.hud-cell
-      [:span.hud-label "SCORE"]
+      [:span.hud-label (t lang :score)]
       [:span.hud-value (str (:points g))]]
      [:div.hud-cell.center
-      [:span.hud-label "STREAK"]
+      [:span.hud-label (t lang :streak)]
       [:span.hud-value (if (pos? (:streak g)) (str "x" (:streak g)) "—")]
       (when (>= (:streak g) 3)
         [:div.combo-meter
          [:div.combo-fill
           {:style {:width (str (min 100 (* 12.5 (min 8 (dec (:streak g))))) "%")}}]])]
      [:div.hud-cell.right
-      [:span.hud-label "TIME"]
+      [:span.hud-label (t lang :time)]
       [:span.hud-value {:class (when (< seconds 11) "urgent")} (str seconds)]]]))
 
 (defn- feedback [g]
-  (when (:answered? g)
-    [:div.feedback {:class (name (or (:outcome g) :none))}
-     [:div.fb-line
-      (case (:outcome g)
-        :correct (str "+" (:last-points g))
-        :wrong   "MISS"
-        :timeout "TOO SLOW"
-        "")]
-     (when (and (= (:outcome g) :correct) (>= (:streak g) 3))
-       [:div.fb-combo (str "COMBO x" (:streak g))])]))
+  (let [lang (or (:lang @db/settings) :en)]
+    (when (:answered? g)
+      [:div.feedback {:class (name (or (:outcome g) :none))}
+       [:div.fb-line
+        (case (:outcome g)
+          :correct (str "+" (:last-points g))
+          :wrong   (t lang :miss)
+          :timeout (t lang :too-slow)
+          "")]
+       (when (and (= (:outcome g) :correct) (>= (:streak g) 3))
+         [:div.fb-combo (str "COMBO x" (:streak g))])])))
 
 ;;; --- menu ---------------------------------------------------------------
 
 (defn- operation-picker []
-  (let [current (:mode @db/settings)]
+  (let [current (:mode @db/settings)
+        lang (or (:lang @db/settings) :en)]
     [:div.mode-picker
-     (for [[k label example] operations]
+     (for [[k example] operations]
        ^{:key (name k)}
        [:button {:class (str "mode" (when (= k (game/operation-key current)) " active"))
 
@@ -83,47 +130,57 @@
                                 (db/set-setting! :mode
                                                 (game/combined-mode k
                                                                    (game/positive-mode? current))))}
-        [:span.mode-label label]
+        [:span.mode-label (t lang k)]
         [:span.mode-example example]])]))
 
 (defn- class-picker []
-  (let [current (:mode @db/settings)]
+  (let [current (:mode @db/settings)
+        lang (or (:lang @db/settings) :en)]
     [:div.class-picker
-     (for [[k label example] number-classes]
+     (for [[k example] number-classes]
        ^{:key (name k)}
        [:button {:class (str "class" (when (= (= k :positive) (game/positive-mode? current)) " active"))
 
                  :on-click #(do (db/set-setting! :mode
                                                 (game/combined-mode (game/operation-key current)
                                                                    (= k :positive))))}
-        [:span.mode-label label]
+        [:span.mode-label (t lang k)]
         [:span.mode-example example]])]))
 
 (defn menu []
   (let [settings @db/settings
+        lang (or (:lang settings) :en)
         best     (db/personal-best (:mode settings))]
     [:div.screen.menu
      [:div.logo
-      [:div.logo-top "MATH"]
-      [:div.logo-mid "TRAINING"]
-      [:div.logo-bot "MACHINE"]]
+      [:div.logo-top (t lang :math)]
+      [:div.logo-mid (t lang :training)]
+      [:div.logo-bot (t lang :machine)]]
      [operation-picker]
       [class-picker]
      [:div.best-line
       (if best
-        [:span "PERSONAL BEST  " [:b (str best)] " pts"]
-        [:span.dim "no record yet - set one!"])]
+        [:span (str (t lang :personal-best) "  ") [:b (str best)] " pts"]
+        [:span.dim (t lang :no-record)])]
      [:div.big-buttons
       [:button.primary.big
        {:on-click #(game/start-round! (:mode settings))}
-       "START ROUND"]
+       (t lang :start-round)]
       [:button.ghost
        {:on-click #(do (sound/play! :leaderboard)
                        (swap! db/state assoc :screen :leaderboard))}
-       "LEADERBOARD"]]
+       (t lang :leaderboard)]]
      [:div.menu-footer
       [:button.icon-btn {:on-click #(sound/toggle-sound!)}
-       (if (:sound settings) "♪ SOUND ON" "♪ SOUND OFF")]]]))
+       (if (:sound settings) (str "♪ " (t lang :sound-on)) (str "♪ " (t lang :sound-off)))]
+      [:button.icon-btn
+       {:style (when (= lang :en) {:border-color "#ffcf4d" :color "#ffcf4d"})
+        :on-click #(db/set-setting! :lang :en)}
+       "EN"]
+      [:button.icon-btn
+       {:style (when (= lang :tr) {:border-color "#ffcf4d" :color "#ffcf4d"})
+        :on-click #(db/set-setting! :lang :tr)}
+       "TR"]]]))
 
 ;;; --- play ---------------------------------------------------------------
 
@@ -187,54 +244,58 @@
                                   (reset! saved (if (:ok res) (:data res) :error)))))))]
     (fn []
       (let [res      @db/results
+            lang (or (:lang @db/settings) :en)
             st       @saved
             accuracy (if (pos? (:total res))
                        (Math/round (* 100 (/ (:correct res) (:total res))))
                        0)]
         [:div.screen.results
-         [:div.result-head "ROUND OVER"]
+         [:div.result-head (t lang :round-over)]
          [:div.score-big (str (:score res))]
          [:div.score-caption
-          (str (mode-label (:mode res)) " MODE")
-          (when (:saved-best res) [:span.newbest " NEW BEST!"])]
+          (str (mode-label (:mode res)) " " (t lang :mode))
+          (when (:saved-best res) [:span.newbest (str " " (t lang :new-best))])]
          [:div.stats
-          [stat "CORRECT"   (str (:correct res) "/" (:total res)) nil]
-          [stat "ACCURACY"  (str accuracy "%") nil]
-          [stat "BEST STREAK" (str "x" (:best-streak res)) nil]
-          [stat "AVG REACTION"
+          [stat (t lang :correct)   (str (:correct res) "/" (:total res)) nil]
+          [stat (t lang :accuracy)  (str accuracy "%") nil]
+          [stat (t lang :best-streak) (str "x" (:best-streak res)) nil]
+          [stat (t lang :avg-reaction)
            (if (pos? (:avg-ms res)) (str (:avg-ms res) " ms") "—") nil]]
          (cond
            (= st :saving)
-           [:div.save-row [:span.dim "saving score..."]]
+           [:div.save-row [:span.dim (t lang :saving)]]
 
            (= st :error)
            [:div.save-row
-            [:span.dim "server unreachable - score kept on this device"]
-            [:button.ghost {:on-click save!} "RETRY"]]
+            [:span.dim (t lang :unreachable)]
+            [:button.ghost {:on-click save!} (t lang :retry)]]
 
            (map? st)
            [:div.saved
-            [:span "ranked #" (str (or (:rank st) "?"))
-             " on the " (mode-label (:mode res)) " board"]]
+            [:span (if (= lang :tr)
+                     (str (mode-label (:mode res)) " tablosunda #"
+                          (str (or (:rank st) "?")) ". sıradasın")
+                     (str "ranked #" (str (or (:rank st) "?"))
+                          " on the " (mode-label (:mode res)) " board"))]]
 
            :else
            [:div.save-row
             [:input.name-input
              {:value @name*
-              :placeholder "your name"
+              :placeholder (t lang :name-placeholder)
               :maxLength 16
               :on-change #(reset! name* (.. % -target -value))
               :on-key-down #(when (= (.-key %) "Enter") (save!))}]
-            [:button.primary {:on-click save!} "SAVE SCORE"]])
+            [:button.primary {:on-click save!} (t lang :save-score)]])
          [:div.big-buttons
           [:button.primary.big
-           {:on-click #(game/start-round! (:mode res))} "PLAY AGAIN"]
+           {:on-click #(game/start-round! (:mode res))} (t lang :play-again)]
           [:button.ghost
            {:on-click #(do (sound/play! :leaderboard)
                            (swap! db/state assoc :screen :leaderboard))}
-           "LEADERBOARD"]
+           (t lang :leaderboard)]
           [:button.ghost
-           {:on-click #(swap! db/state assoc :screen :menu)} "MENU"]]]))))
+           {:on-click #(swap! db/state assoc :screen :menu)} (t lang :menu)]]]))))
 
 ;;; --- leaderboard --------------------------------------------------------
 
@@ -262,7 +323,8 @@
   (let [booted? (atom false)]
     (fn []
       (let [board  @db/leaderboard
-            mode   (or (:mode board) (:mode @db/settings))]
+            mode   (or (:mode board) (:mode @db/settings))
+            lang   (or (:lang @db/settings) :en)]
         (when-not @booted?
           (reset! booted? true)
           (fetch-board! mode))
@@ -271,26 +333,26 @@
           [:button.icon-btn
            {:on-click #(do (sound/play! :click)
                            (swap! db/state assoc :screen :menu))}
-           "← BACK"]
+           (str "← " (t lang :back))]
           [:button.icon-btn
-           {:on-click #(fetch-board! mode)} "↻ REFRESH"]]
-         [:div.lb-title "LEADERBOARD"]
+           {:on-click #(fetch-board! mode)} (str "↻ " (t lang :refresh))]]
+         [:div.lb-title (t lang :leaderboard)]
          [:div.lb-tabs
-          (for [[k label _] operations]
+          (for [[k example] operations]
             ^{:key (str "op-" (name k))}
             [:button {:class (str "tab" (when (= k (game/operation-key mode)) " active"))
-                          :on-click #(do (sound/play! :click)
-                                         (fetch-board! (game/combined-mode k (game/positive-mode? mode))))}
-             label])]
-          [:div.lb-tabs
-           (for [[k label _] number-classes]
-             ^{:key (str "cls-" (name k))}
-             [:button {:class (str "tab" (when (= (= k :positive) (game/positive-mode? mode)) " active"))
-                           :on-click #(do (sound/play! :click)
-                                          (fetch-board! (game/combined-mode (game/operation-key mode) (= k :positive))))}
-              label])]
+                      :on-click #(do (sound/play! :click)
+                                     (fetch-board! (game/combined-mode k (game/positive-mode? mode))))}
+             (t lang k)])]
+         [:div.lb-tabs
+          (for [[k example] number-classes]
+            ^{:key (str "cls-" (name k))}
+            [:button {:class (str "tab" (when (= (= k :positive) (game/positive-mode? mode)) " active"))
+                      :on-click #(do (sound/play! :click)
+                                     (fetch-board! (game/combined-mode (game/operation-key mode) (= k :positive))))}
+             (t lang k)])]
          (case (:status board)
-           :loading [:div.lb-body.dim "loading..."]
+           :loading [:div.lb-body.dim (t lang :loading)]
            :error   [:div.lb-body.dim "server unavailable"]
            (if (seq (:entries board))
              [:div.lb-body
@@ -303,7 +365,7 @@
                         (= (:name e) (:name @db/settings))
                         (= (:score e) (:score @db/results)))])
                 (:entries board)))]
-             [:div.lb-body.dim "no scores yet - be the first"]))]))))
+             [:div.lb-body.dim (t lang :no-scores)]))]))))
 
 ;;; --- root ---------------------------------------------------------------
 
@@ -322,14 +384,23 @@
 
 (defn root []
   (let [screen (:screen @db/state)
+        lang (or (:lang @db/settings) :en)
         hints  (if (coarse-pointer?)
-                 [[:span "tap an answer"]
-                  [:span "tap to start"]]
-                 [[:span "[1-4] answer"]
-                  [:span "[ENTER] start"]
-                  [:span "[ESC] back"]])]
+                 (if (= lang :tr)
+                   [[:span "bir cevaba dokun"]
+                    [:span "başlatmak için dokun"]]
+                   [[:span "tap an answer"]
+                    [:span "tap to start"]])
+                 (if (= lang :tr)
+                   [[:span "[1-4] cevap"]
+                    [:span "[ENTER] başlat"]
+                    [:span "[ESC] geri"]]
+                   [[:span "[1-4] answer"]
+                    [:span "[ENTER] start"]
+                    [:span "[ESC] back"]]))]
     [:div.cabinet
-     [:header.marquee [bulbs] [:h1 "MATH TRAINING MACHINE"]]
+     [:header.marquee [bulbs]
+      [:h1 (str (t lang :math) " " (t lang :training) " " (t lang :machine))]]
      [:main.screen-wrap
       (case screen
         :play        [play]

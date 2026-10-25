@@ -114,14 +114,15 @@
   (keyword (str (name op) "-" (if positive? "positive" "signed"))))
 
 (defn gen-question [mode lvl]
-  (let [r (bound-for lvl)
-        pos? (positive-mode? mode)
+  (let [pos? (positive-mode? mode)
         op-key (operation-key mode)
         op (case op-key
              :sum :+
              :diff :-
              :mult :*
              :mixed (rand-nth [:+ :- :*]))
+        ;; Multiplication stays within single-digit operands.
+        r (if (= op :*) 9 (bound-for lvl))
         ;; For the all-positive class the result must also be positive, so a
         ;; subtraction is arranged as a larger minuend minus a smaller one.
         [a b] (if pos?

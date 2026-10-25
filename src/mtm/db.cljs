@@ -10,7 +10,7 @@
 
 (def settings
   "Persisted user settings: game mode, sound toggle, player name."
-  (r/atom {:mode :sum-signed :sound true :name ""}))
+  (r/atom {:mode :sum-signed :sound true :name "" :lang nil}))
 
 (def game
   "The round currently being played, or nil."
@@ -46,11 +46,19 @@
       (ls-write (best-key mode) (str score))
       score)))
 
+(defn- detect-lang []
+  (if (and (exists? js/navigator)
+           (some? (re-find #"^tr" (str (.-language js/navigator)))))
+    :tr :en))
+
 (defn load-settings! []
   (when-let [raw (ls-read "mtm.settings")]
     (try
       (swap! settings merge (reader/read-string raw))
-      (catch :default _ nil))))
+      (catch :default _ nil)))
+  (when-not (:lang @settings)
+    (swap! settings assoc :lang (detect-lang)))
+  (ls-write "mtm.settings" (pr-str @settings)))
 
 (defn save-settings! []
   (ls-write "mtm.settings" (pr-str @settings)))
