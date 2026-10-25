@@ -55,9 +55,12 @@
     {:n (/ n g) :d (/ d g)}))
 
 (defn- make-fraction [bound positive?]
-  (reduce-frac
-   {:n (if positive? (rnd 1 bound) (let [v (rnd (- bound) bound)] (if (zero? v) 1 v)))
-    :d (rnd 2 9)}))
+  (let [d (rnd 2 9)]
+    (reduce-frac
+     {:n (if positive?
+           (rnd 1 (dec d))
+           (let [v (rnd (inc (- d)) (dec d))] (if (zero? v) 1 v)))
+      :d d})))
 
 (defn- frac+ [a b]
   (reduce-frac {:n (+ (* (:n a) (:d b)) (* (:n b) (:d a)))
@@ -74,10 +77,13 @@
 (defn frac-gt? [a b]
   (> (* (:n a) (:d b)) (* (:n b) (:d a))))
 
-(defn format-value [v]
+(defn format-frac [v]
   (if (and (map? v) (contains? v :n) (contains? v :d))
     (if (= 1 (:d v)) (str (:n v)) (str (:n v) "/" (:d v)))
     (str v)))
+
+(defn format-value [v]
+  (format-frac v))
 
 (defn level
   "Difficulty grows every five correct answers, capped at level 4."
@@ -225,9 +231,7 @@
 
 (defn question-text [{:keys [a b op positive? frac?]}]
   (let [sym (case op :+ "+" :- "-" :* "*")
-        fmt (fn [v] (if (and (map? v) (contains? v :n) (contains? v :d))
-                      (if (= 1 (:d v)) (str (:n v)) (str (:n v) "/" (:d v)))
-                      (str v)))]
+        fmt (fn [v] (format-frac v))]
     (if frac?
       (if positive?
         (str (fmt a) " " sym " " (fmt b) " = ?")
