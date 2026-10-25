@@ -143,6 +143,8 @@ button {
   padding: 12px 20px;
 }
 .ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+.share-btn { border-color: var(--cyan); color: var(--cyan); display: inline-flex; align-items: center; justify-content: center; padding: 10px 12px; }
+.share-btn:hover { background: var(--cyan); color: #070912; }
 
 .icon-btn {
   background: #1a2150;

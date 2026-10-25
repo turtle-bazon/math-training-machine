@@ -61,7 +61,7 @@
       (cond
         ((not (mode-p mode))
          (json-error 400 "unknown mode"))
-        ((or (zerop (length name)) (> (length name) 16))
+        ((or (zerop (length name)) (> (length name) 128))
          (json-error 400 "name must be 1-16 characters"))
         ((or (< score 0) (> score 10000000))
          (json-error 400 "score out of range"))

@@ -32,8 +32,19 @@
 (defn ls-read [k]
   (when storage (.getItem storage k)))
 
+(defn- gen-uuid []
+  (if (and (exists? js/crypto) (.-randomUUID js/crypto))
+    (.randomUUID js/crypto)
+    (str (js/Date.now) "-" (rand-int 1000000))))
+
 (defn ls-write [k v]
   (when storage (.setItem storage k v)))
+
+(defn device-id []
+  (or (ls-read "mtm.device")
+      (let [id (gen-uuid)]
+        (ls-write "mtm.device" id)
+        id)))
 
 (defn best-key [mode] (str "mtm.best." (name mode)))
 

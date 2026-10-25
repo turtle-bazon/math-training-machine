@@ -40,4 +40,4 @@
 
 (defn trim-name [s]
   (let [t (str/trim (or s ""))]
-    (subs t 0 (min 16 (count t)))))
+    (subs t 0 (min 128 (count t)))))

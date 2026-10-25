@@ -71,6 +71,32 @@
 (defn set-lang! [l]
   (db/set-setting! :lang l))
 
+(defn- telegram-user-id []
+  (try
+    (let [tg (.-Telegram js/window)]
+      (when tg
+        (let [init (.-initDataUnsafe tg)]
+          (when init
+            (let [u (.-user init)]
+              (when u
+                (str (.-id u))))))))
+    (catch :default _ nil)))
+
+(defn- source-name [base]
+  (let [tg (telegram-user-id)]
+    (if tg
+      tg
+      (str base "#source:" (db/device-id)))))
+
+(defn share! []
+  (let [url (.-href js/location)]
+    (if (and (exists? js/navigator) (.-share js/navigator))
+      (.share js/navigator #js{:title "Math Training Machine" :url url})
+      (do
+        (when (.-clipboard js/navigator)
+          (.writeText (.-clipboard js/navigator) url))
+        (js/alert (if (= (or (:lang @db/settings) :en) :tr) "Bağlantı kopyalandı" "Link copied"))))))
+
 (defn- operation-label [op]
   (or (some (fn [[k l _]] (when (= k op) l)) operations) (name op)))
 
@@ -160,7 +186,7 @@
 (defn menu []
   (let [settings @db/settings
         lang (or (:lang settings) :en)
-        best     (db/personal-best (:mode settings))]
+        best (db/personal-best (:mode settings))]
     [:div.screen.menu
      [:div.logo
       [:div.logo-top (t lang :math)]
@@ -169,7 +195,7 @@
      [:div.picker-label (t lang :operation)]
      [operation-picker]
      [:div.picker-label (t lang :numbers)]
-      [class-picker]
+     [class-picker]
      [:div.best-line
       (if best
         [:span (str (t lang :personal-best) "  ") [:b (str best)] " pts"]
@@ -181,7 +207,17 @@
       [:button.ghost
        {:on-click #(do (sound/play! :leaderboard)
                        (swap! db/state assoc :screen :leaderboard))}
-       (t lang :leaderboard)]]
+       (t lang :leaderboard)]
+      [:button.ghost.share-btn
+       {:on-click #(share!)}
+       [:svg {:width 20 :height 20 :viewBox "0 0 24 24" :fill "none"
+              :stroke "currentColor" :stroke-width 2 :stroke-linecap "round"
+              :stroke-linejoin "round"}
+        [:circle {:cx 18 :cy 5 :r 3}]
+        [:circle {:cx 6 :cy 12 :r 3}]
+        [:circle {:cx 18 :cy 19 :r 3}]
+        [:line {:x1 8.59 :y1 13.51 :x2 15.42 :y2 17.49}]
+        [:line {:x1 15.41 :y1 6.51 :x2 8.59 :y2 10.49}]]]]
      [:div.menu-footer
       [:button.icon-btn {:on-click #(sound/toggle-sound!)}
        (if (:sound settings) (str "♪ " (t lang :sound-on)) (str "♪ " (t lang :sound-off)))]
@@ -192,8 +228,7 @@
       [:button.icon-btn
        {:style (when (= lang :tr) {:border-color "#ffcf4d" :color "#ffcf4d"})
         :on-click #(set-lang! :tr)}
-       "TR"]]
-     ]))
+       "TR"]]]))
 
 ;;; --- play ---------------------------------------------------------------
 
@@ -244,9 +279,10 @@
   (let [name* (r/atom (or (:name @db/settings) ""))
         saved (r/atom nil)
         save! (fn []
-                (let [n (api/trim-name @name*)]
-                  (when (and (seq n) (not (keyword? @saved)))
-                    (db/set-setting! :name n)
+                (let [base (api/trim-name @name*)
+                      n (source-name base)]
+                  (when (and (seq base) (not (keyword? @saved)))
+                    (db/set-setting! :name base)
                     (reset! saved :saving)
                     (api/submit {:name n
                                  :mode   (name (:mode @db/results))

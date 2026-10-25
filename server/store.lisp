@@ -93,7 +93,7 @@
                                  (= (char-code c) 127)))
                            (or raw "")))
          (trimmed (string-trim '(#\Space #\Tab #\Newline) chars)))
-    (subseq trimmed 0 (min 16 (length trimmed)))))
+    (subseq trimmed 0 (min 128 (length trimmed)))))
 
 (defun record-fields (record)
   (list :id          (getf record :id)

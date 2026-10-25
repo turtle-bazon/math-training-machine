@@ -83,4 +83,6 @@
   (.addEventListener js/window "pointerdown" global-click true)
   (.addEventListener js/window "keydown" on-key-down)
   (.addEventListener js/window "click" global-click)
-  (.addEventListener js/window "pointerdown" global-click))
+  (.addEventListener js/window "pointerdown" global-click)
+  (when (and (exists? js/navigator) (.-serviceWorker js/navigator))
+    (.register (.-serviceWorker js/navigator) "/sw.js")))
