@@ -480,20 +480,7 @@
 
 (defn root []
   (let [screen (:screen @db/state)
-        lang (or (:lang @db/settings) :en)
-        hints  (if (coarse-pointer?)
-                 (if (= lang :tr)
-                   [[:span "bir cevaba dokun"]
-                    [:span "başlatmak için dokun"]]
-                   [[:span "tap an answer"]
-                    [:span "tap to start"]])
-                 (if (= lang :tr)
-                   [[:span "[1-4] cevap"]
-                    [:span "[ENTER] başlat"]
-                    [:span "[ESC] geri"]]
-                   [[:span "[1-4] answer"]
-                    [:span "[ENTER] start"]
-                    [:span "[ESC] back"]]))]
+        lang (or (:lang @db/settings) :en)]
     [:div.cabinet
      [:header.marquee [bulbs]]
      [:main.screen-wrap
@@ -502,5 +489,4 @@
         :results     [results]
         :leaderboard [leaderboard]
         :stats       [stats-page]
-        [menu])]
-     (into [:footer.controls] hints)]))
+        [menu])]]))

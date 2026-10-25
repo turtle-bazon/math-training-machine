@@ -176,7 +176,7 @@
                 "b.style.height=(d[1]===0?2:(d[1]/max*100))+'px';"
                 "b.innerHTML='<span class=v>'+d[1]+'</span><span>'+d[0].slice(5)+'</span>';"
                 "el.appendChild(b);});}"
-                "function table(el,data){const t=document.createElement('table');"
+                "function modeLabel(m){const p=m.split('-');const op={sum:'+',diff:'-',mult:'*',mixed:'~'};const cl={positive:'1..n',signed:'±n',frac:'1/2','frac-signed':'±1/2'};return (op[p[0]]||p[0])+' '+(cl[p.slice(1).join('-')]||p.slice(1).join('-'));}function table(el,data){const t=document.createElement('table');"
                 "t.innerHTML='<tr><th>name</th><th>count</th></tr>';"
                 "data.forEach(d=>{const tr=document.createElement('tr');tr.innerHTML='<td>'+d[0]+'</td><td>'+d[1]+'</td>';t.appendChild(tr);});"
                 "el.appendChild(t);}"
@@ -189,10 +189,29 @@
                 "table(document.getElementById('sources'),d.sources||[]);"
                 "table(document.getElementById('browsers'),d.browsers||[]);"
                 "table(document.getElementById('referrers'),d.referrers||[]);
-                table(document.getElementById('gametypes'),d['game-types']||[]);
+                const gt=document.getElementById('gametypes');const t=document.createElement('table');t.innerHTML='<tr><th>game</th><th>count</th></tr>';
+(d['game-types']||[]).forEach(g=>{
+  const parts=g[0].split('-');
+  const opSym={sum:'+',diff:'-',mult:'*',mixed:'∑'};
+  const clsSym={positive:'1..n',signed:'±n',frac:'1/2','frac-signed':'±1/2'};
+  const tr=document.createElement('tr');
+  const td1=document.createElement('td');
+  const s1=document.createElement('span');s1.textContent=opSym[parts[0]]||parts[0];s1.style.cssText='display:inline-block;background:#151b38;border:2px solid #2b3568;border-radius:8px;padding:2px 6px;margin-right:4px;font-family:monospace;';
+  const s2=document.createElement('span');s2.textContent=clsSym[parts.slice(1).join('-')]||parts.slice(1).join('-');s2.style.cssText='display:inline-block;background:#151b38;border:2px solid #2b3568;border-radius:8px;padding:2px 6px;font-family:monospace;';
+  td1.appendChild(s1);td1.appendChild(s2);
+  const td2=document.createElement('td');td2.textContent=g[1];
+  tr.appendChild(td1);tr.appendChild(td2);t.appendChild(tr);
+});
+gt.appendChild(t);
 const gtc=document.getElementById('gametypecharts');
 (d['game-type-daily']||[]).forEach(g=>{
-  const h=document.createElement('h3');h.textContent=g.mode;h.style.color='#39e07f';gtc.appendChild(h);
+  const parts=g.mode.split('-');
+  const opSym={sum:'+',diff:'-',mult:'*',mixed:'∑'};
+  const clsSym={positive:'1..n',signed:'±n',frac:'1/2','frac-signed':'±1/2'};
+  const h=document.createElement('div');h.style.display='flex';h.style.gap='6px';h.style.margin='8px 0';
+  const s1=document.createElement('span');s1.textContent=opSym[parts[0]]||parts[0];s1.style.cssText='background:#151b38;border:2px solid #2b3568;border-radius:12px;padding:4px 8px;font-family:monospace;font-size:18px;color:#e8ecff;';
+  const s2=document.createElement('span');s2.textContent=clsSym[parts.slice(1).join('-')]||parts.slice(1).join('-');s2.style.cssText='background:#151b38;border:2px solid #2b3568;border-radius:12px;padding:4px 8px;font-family:monospace;font-size:18px;color:#e8ecff;';
+  h.appendChild(s1);h.appendChild(s2);gtc.appendChild(h);
   const c=document.createElement('div');c.className='chart';gtc.appendChild(c);
   barChart(c,g.daily||[]);
 });"
