@@ -10,6 +10,7 @@ build: clean frontend generate-static
 	  --eval '(asdf:load-asd (truename "mtm-server.asd"))' \
 	  --eval '(ql:quickload (list "clack" "clack-handler-wookie" "yason" "conskivi-fileonly" "bordeaux-threads" "quri" "babel" "cl-base64"))' \
 	  --eval '(asdf:load-system "mtm-server")' \
+	  --eval '(push (lambda () (format t "~&dropping ~d saved shared object(s)~%" (length sb-sys:*shared-objects*)) (setf sb-sys:*shared-objects* nil)) uiop:*image-dump-hook*)' \
 	  --eval '(ensure-directories-exist "build")' \
 	  --eval '(asdf:make "mtm-server")'
 	@if [ -n "$(BUILD_SUFFIX)" ]; then mv build/math-training-machine build/math-training-machine$(BUILD_SUFFIX); fi

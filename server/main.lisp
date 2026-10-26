@@ -36,6 +36,14 @@
   nil)
 
 (defun main ()
+  ;; Re-open shared objects dropped at image-dump time (focus approach).
+  #+sbcl
+  (let ((pkg (find-package "LIBUV")))
+    (format t "~&[mtm] libuv package: ~a~%" pkg)
+    (format t "~&[mtm] reloading libuv...~%")
+    (handler-case (cffi:load-foreign-library 'libuv::libuv)
+      (error (e) (format t "~&[mtm] load-foreign-library error: ~a~%" e)))
+    (format t "~&[mtm] libuv loaded-p: ~a~%" (cffi:foreign-library-loaded-p 'libuv::libuv)))
   (load-config!)
   (let ((port (configured-port))
         (address (configured-address)))
