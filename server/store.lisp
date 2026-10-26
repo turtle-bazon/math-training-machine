@@ -89,12 +89,14 @@
                          :ttl-interval 86400000))
     (conskivi-fileonly:conskivi-start *db*)
     ;; Stop the TTL/expiration scanner: we do not use key expiration.
-    (let ((thread (slot-value *db* 'expiration-thread)))
-      (when thread
-        (setf (slot-value *db* 'state) :stopped)
-        (ignore-errors (bt2:join-thread thread))
-        (setf (slot-value *db* 'expiration-thread) nil
-              (slot-value *db* 'state) :running)))
+    (let ((exp-slot (find-symbol "EXPIRATION-THREAD" (find-package "CONSKIVI-FILEONLY"))))
+      (when exp-slot
+        (let ((thread (slot-value *db* exp-slot)))
+          (when thread
+            (setf (slot-value *db* (find-symbol "STATE" (find-package "CONSKIVI-FILEONLY"))) :stopped)
+            (ignore-errors (bt2:join-thread thread))
+            (setf (slot-value *db* exp-slot) nil
+                  (slot-value *db* (find-symbol "STATE" (find-package "CONSKIVI-FILEONLY"))) :running)))))
     (format t "~&[mtm] conskivi store open at ~a~%" path)
     *db*))
 
