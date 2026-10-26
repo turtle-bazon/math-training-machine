@@ -56,7 +56,13 @@
     (finish-output)
     #+sbcl (pushnew #'shutdown sb-ext:*exit-hooks*)
     (handler-case
-        (loop (sleep 3600))
+        (loop
+          (sleep 60)
+          (format t "~&[mtm] heartbeat~%")
+          (finish-output))
       #+sbcl (sb-sys:interactive-interrupt () nil)
-      (serious-condition () nil))
+      (serious-condition (e)
+        (format *error-output* "~&[mtm] serious condition: ~a~%" e)
+        (finish-output)
+        nil))
     (shutdown)))
