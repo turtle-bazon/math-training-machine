@@ -8,7 +8,7 @@ SHADOW = npx shadow-cljs
 build: clean frontend generate-static
 	$(SBCL) \
 	  --eval '(asdf:load-asd (truename "mtm-server.asd"))' \
-	  --eval '(ql:quickload (list "clack" "clack-handler-hunchentoot" "yason" "conskivi-fileonly" "bordeaux-threads" "quri" "babel" "cl-base64"))' \
+	  --eval '(ql:quickload (list "clack" "clack-handler-wookie" "yason" "conskivi-fileonly" "bordeaux-threads" "quri" "babel" "cl-base64"))' \
 	  --eval '(asdf:load-system "mtm-server")' \
 	  --eval '(ensure-directories-exist "build")' \
 	  --eval '(asdf:make "mtm-server")'

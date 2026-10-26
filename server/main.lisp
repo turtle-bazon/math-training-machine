@@ -15,7 +15,7 @@
     (open-store)
     (setf *server*
           (clack:clackup #'app
-                          :server (or server :hunchentoot)
+                          :server (or server :wookie)
                          :address address
                          :port port
                          :debug nil))
