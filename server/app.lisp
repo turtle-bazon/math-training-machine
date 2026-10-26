@@ -102,11 +102,15 @@
       "application/octet-stream"))
 
 (defun bytes-response (bytes rel)
-  (list 200
-        (list :content-type (content-type rel)
-              :content-length (length bytes)
-              :cache-control "no-cache")
-        (list bytes)))
+  (let ((body (if (stringp bytes)
+                  bytes
+                  (babel:octets-to-string
+                   (coerce bytes '(vector (unsigned-byte 8)))
+                   :encoding :utf-8 :errorp nil))))
+    (list 200
+          (list :content-type (content-type rel)
+                :cache-control "no-cache")
+          (list body))))
 
 (defun forbidden ()
   (json-error 403 "forbidden"))
