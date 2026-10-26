@@ -75,11 +75,26 @@
 (defun open-store ()
   (let ((path (data-dir)))
     (ensure-directories-exist path)
+    ;; Remove legacy stat files whose keys contained underscores/spaces and
+    ;; crashed the expiration scanner.
+    (dolist (f (uiop:directory-files path "*.ck"))
+      (let ((name (pathname-name f)))
+        (when (or (uiop:string-prefix-p "BROWSER-" name)
+                  (uiop:string-prefix-p "REFERRER-" name))
+          (ignore-errors (delete-file f)))))
     (setf *db*
           (make-instance 'conskivi-fileonly:conskivi-fileonly-database
                          :name "mtm-leaderboard"
-                         :db-path path))
+                         :db-path path
+                         :ttl-interval 86400000))
     (conskivi-fileonly:conskivi-start *db*)
+    ;; Stop the TTL/expiration scanner: we do not use key expiration.
+    (let ((thread (slot-value *db* 'expiration-thread)))
+      (when thread
+        (setf (slot-value *db* 'state) :stopped)
+        (ignore-errors (bt2:join-thread thread))
+        (setf (slot-value *db* 'expiration-thread) nil
+              (slot-value *db* 'state) :running)))
     (format t "~&[mtm] conskivi store open at ~a~%" path)
     *db*))
 
@@ -197,6 +212,16 @@ Caller must hold *DB-LOCK*."
 (defun daily-key (prefix date)
   (intern (format nil "~a-~a" prefix (substitute #\- #\- date)) :keyword))
 
+
+(defun sanitize-key-part (s)
+  (let ((out (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
+    (loop for ch across (or s "")
+          do (cond
+               ((or (alphanumericp ch) (char= ch #\-))
+                (vector-push-extend ch out))
+               (t (vector-push-extend #\- out))))
+    (string-trim "-" (coerce out 'string))))
+
 (defun inc-visits (device-id source browser referrer)
   (bt:with-lock-held (*db-lock*)
     (let ((cur (or (conskivi-core:conskivi-get *db* :stat-visits) 0))
@@ -208,13 +233,16 @@ Caller must hold *DB-LOCK*."
       (conskivi-core:conskivi-put *db* (daily-key "DAILY-VISITS" day)
         (1+ (or (conskivi-core:conskivi-get *db* (daily-key "DAILY-VISITS" day)) 0)))
       (when (and (stringp source) (plusp (length source)))
-        (let ((k (intern (format nil "SOURCE-~a" (string-upcase source)) :keyword)))
+        (let* ((part (sanitize-key-part (string-upcase source)))
+               (k (intern (format nil "SOURCE-~a" (if (plusp (length part)) part "UNKNOWN")) :keyword)))
           (conskivi-core:conskivi-put *db* k (1+ (or (conskivi-core:conskivi-get *db* k) 0)))))
       (when (and (stringp browser) (plusp (length browser)))
-        (let ((k (intern (format nil "BROWSER-~a" (string-upcase (subseq browser 0 (min 40 (length browser))))) :keyword)))
+        (let* ((part (sanitize-key-part (string-upcase (subseq browser 0 (min 40 (length browser))))))
+               (k (intern (format nil "BROWSER-~a" (if (plusp (length part)) part "UNKNOWN")) :keyword)))
           (conskivi-core:conskivi-put *db* k (1+ (or (conskivi-core:conskivi-get *db* k) 0)))))
       (when (and (stringp referrer) (plusp (length referrer)))
-        (let ((k (intern (format nil "REFERRER-~a" (string-upcase (subseq referrer 0 (min 60 (length referrer))))) :keyword)))
+        (let* ((part (sanitize-key-part (string-upcase (subseq referrer 0 (min 60 (length referrer))))))
+               (k (intern (format nil "REFERRER-~a" (if (plusp (length part)) part "UNKNOWN")) :keyword)))
           (conskivi-core:conskivi-put *db* k (1+ (or (conskivi-core:conskivi-get *db* k) 0)))))
       (conskivi-fileonly:conskivi-save *db*)
       (1+ cur))))
