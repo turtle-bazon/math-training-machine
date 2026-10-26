@@ -6,7 +6,7 @@
   :license "GPLv3"
   :version "0.1.0"
   :depends-on ("clack"
-               "clack-handler-wookie"
+               "clack-handler-hunchentoot"
                "yason"
                "conskivi-fileonly"
                "bordeaux-threads"

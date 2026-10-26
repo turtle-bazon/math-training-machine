@@ -8,18 +8,17 @@
 
 (defun start (&key port address server)
   "Read the configuration, open the conskivi store and start the
-  Clack/Wookie listener."
+  Clack/Hunchentoot listener."
   (load-config!)
   (let ((port (or port (configured-port)))
         (address (or address (configured-address))))
     (open-store)
     (setf *server*
           (clack:clackup #'app
-                         :server (or server :wookie)
+                          :server (or server :hunchentoot)
                          :address address
                          :port port
-                         :debug nil
-                         :silent t))
+                         :debug nil))
     (format t "~&[mtm] serving on http://~a:~a/~%" address port)
     (finish-output)
     *server*))
